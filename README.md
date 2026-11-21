@@ -13,4 +13,7 @@ A cstimer-style speedcubing timer that installs to your phone's home screen and 
 - **iPhone:** open the link in Safari → Share → *Add to Home Screen*
 - **Android:** open the link in Chrome → menu → *Add to Home screen* (or *Install app*)
 
-Solves are saved on the device. Use Settings → Export / Import to move them.
+## Sign in with Google
+Signing in syncs your solves and settings across devices and lets you join the friends board,
+which shows each person's best single, ao5 and ao12 per puzzle. Solves are saved on the device when signed out.
+Sign-in and storage use Firebase (Authentication + Cloud Firestore); each person can only read and change their own solves.

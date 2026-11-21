@@ -12,7 +12,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000;overscroll-behavior-y:none}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
-<script>window.__SPEEDCUBE_STANDALONE = true;</script>
+<script>window.__SPEEDCUBE_STANDALONE = true; window.__FIREBASE_CONFIG = {"apiKey": "AIzaSyACnTiNHbw39HxZgNN8qW_x1NTje5z_0Xg", "authDomain": "speedcube-timer-f1e35.firebaseapp.com", "projectId": "speedcube-timer-f1e35", "storageBucket": "speedcube-timer-f1e35.firebasestorage.app", "messagingSenderId": "842014068697", "appId": "1:842014068697:web:1334d226e76b4a7e1893c8"};</script>
 <title>Speedcube Timer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1416,6 +1416,9 @@ if (typeof module !== "undefined") module.exports = Stats;
   const DNF = S.DNF;
   // The home-screen build sets this flag; it has no claude.ai account features.
   const STANDALONE = !!window.__SPEEDCUBE_STANDALONE;
+  // Google sign-in through Firebase, only on the home-screen site and only once a project config is present.
+  const FB_CFG = STANDALONE && window.__FIREBASE_CONFIG && window.__FIREBASE_CONFIG.apiKey ? window.__FIREBASE_CONFIG : null;
+  const FB_BASE = window.__FIREBASE_SDK_BASE || "https://www.gstatic.com/firebasejs/13.2.0/";
 
   const DEFAULTS = {
     theme: "auto", accent: "", timerFont: "martian", timerSize: 1, scrambleSize: 1, preview: true, previewSize: 1,
@@ -1474,7 +1477,7 @@ if (typeof module !== "undefined") module.exports = Stats;
     localTimer = setTimeout(() => { const ok = Local.save(data); setSync(ok ? "local" : "error", ok ? "Saved in this browser" : "This browser blocked saving. Export your data from Settings to keep it."); }, 250);
   }
   function scheduleFlush() { clearTimeout(flushTimer); setSync("saving"); flushTimer = setTimeout(flush, 600); }
-  const profRef = () => cloud.db.doc(`data/users/${cloud.uid}/profile`);
+  const profRef = () => cloud.db.doc(cloud.profilePath);
   const chunkRef = (sid, i) => profRef().collection("chunks").doc(`${sid}~${i}`);
   async function retry(fn) {
     try { return await fn(); }
@@ -1522,6 +1525,11 @@ if (typeof module !== "undefined") module.exports = Stats;
   let cloudBroken = false;
   function handleCloudError(e) {
     const code = e && e.code;
+    if (cloud && cloud.kind === "firebase" && code === "permission_denied") {
+      setSync("error", "Your account refused the save. The Firestore rules may not be published.");
+      toast("Couldn't save to your account. Check that the Firestore rules are published.");
+      return;
+    }
     if (code === "invalid_argument" || code === "not_granted" || code === "revoked" || code === "capability_disabled" || code === "capability_removed") {
       // This viewer cannot write here: keep working on this device.
       cloudBroken = true; mode = "local"; Local.save(data);
@@ -1536,8 +1544,8 @@ if (typeof module !== "undefined") module.exports = Stats;
       clearTimeout(flushTimer); flushTimer = setTimeout(flush, 8000);
     }
   }
-  async function loadCloud() {
-    const snap = await retry(() => profRef().get());
+  async function loadCloud(src) {
+    const snap = await retry(() => profRef().get(src));
     if (!snap.exists) return null;
     const b = clone(snap.data());
     const d = { settings: b.settings, sessions: b.sessions || [], current: b.current, solves: {} };
@@ -1548,7 +1556,7 @@ if (typeof module !== "undefined") module.exports = Stats;
     async function worker() {
       while (k < jobs.length) {
         const [sid, i] = jobs[k++];
-        const c = await retry(() => chunkRef(sid, i).get());
+        const c = await retry(() => chunkRef(sid, i).get(src));
         (parts[sid] = parts[sid] || [])[i] = c.exists ? clone(c.data().solves || []) : [];
       }
     }
@@ -2123,14 +2131,18 @@ if (typeof module !== "undefined") module.exports = Stats;
     const st = settings();
     const opt = (v, l, cur) => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${l}</option>`;
     const sw = (id, on) => `<input type="checkbox" class="switch" id="${id}" ${on ? "checked" : ""}>`;
-    const where = STANDALONE
+    const where = FB_CFG
+      ? (mode === "cloud"
+        ? `<strong>Synced to your Google account.</strong> Your solves and settings follow you to any device where you sign in on this site.`
+        : `<strong>Saved on this device.</strong> Sign in with Google to sync your solves across devices and join the friends board.`)
+      : STANDALONE
       ? `<strong>Saved on this device.</strong> This home-screen version keeps your solves on this phone. To move solves to or from the claude.ai version, export from one and import into the other.`
       : mode === "cloud"
       ? `<strong>Saved to your claude.ai account.</strong> Your sessions and settings follow you to any device where you open this page while signed in.`
       : cloudBroken
         ? `<strong>Saved in this browser only.</strong> Your access to this page doesn't allow saving to your account. The page owner can invite you by email as an Editor to change that.`
         : `<strong>Saved in this browser only.</strong> Open this page on claude.ai while signed in to keep your solves in your account.`;
-    const merge = mode === "cloud" && localBackup && localBackup.sessions.some(s => (localBackup.solves[s.id] || []).length) ? `<button class="btn" type="button" id="mergeLocal">Add solves saved in this browser</button>` : "";
+    const merge = mode === "cloud" && localBackup && localBackup.sessions.some(s => (localBackup.solves[s.id] || []).length) ? `<button class="btn" type="button" id="mergeLocal">${FB_CFG ? "Add solves saved on this device" : "Add solves saved in this browser"}</button>` : "";
     openDialog("Settings", `
       <fieldset><legend class="label">Timing</legend>
         <div class="field"><label for="sInspection">WCA inspection<small>15 seconds. Starting after 15 s adds +2, after 17 s is a DNF.</small></label>${sw("sInspection", st.inspection)}</div>
@@ -2153,7 +2165,7 @@ if (typeof module !== "undefined") module.exports = Stats;
         <div class="field"><label for="sPrevSize">Preview size</label><input type="range" id="sPrevSize" min="0.6" max="1.8" step="0.05" value="${st.previewSize}"></div>
       </fieldset>
       <fieldset id="dataSection"><legend class="label">Your data</legend>
-        <div class="callout"><div>${where}</div>${mode === "cloud" && cloud.me ? `<div class="note">Signed in as ${esc(cloud.me.name || "you")}.</div>` : ""}</div>
+        <div class="callout"><div>${where}</div>${mode === "cloud" && cloud.me ? `<div class="note">Signed in as ${esc(cloud.me.name || "you")}${cloud.me.email ? ` (${esc(cloud.me.email)})` : ""}.</div>` : ""}${FB_CFG ? `<div class="row">${mode === "cloud" ? `<button class="btn" type="button" id="fbSignOut">Sign out</button>` : `<button class="btn primary" type="button" id="fbSignIn">Sign in with Google</button>`}</div>` : ""}</div>
         <div class="row" style="flex-wrap:wrap"><button class="btn" type="button" id="exportBtn">Export JSON</button><label class="btn" for="importFile" style="cursor:pointer">Import file…</label><input type="file" id="importFile" accept=".json,.txt,application/json" hidden>${merge}</div>
         <div class="note">Import takes a cstimer export (Export → to file) or a file exported from this page. Imported sessions are added next to your current ones.</div>
         <div id="dataOut"></div>
@@ -2175,9 +2187,13 @@ if (typeof module !== "undefined") module.exports = Stats;
     $("#exportBtn").addEventListener("click", exportData);
     $("#importFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) importFile(f); e.target.value = ""; });
     if ($("#mergeLocal")) $("#mergeLocal").addEventListener("click", () => {
-      const add = localBackup.sessions.filter(s => (localBackup.solves[s.id] || []).length).map(s => ({ name: s.name + " (this browser)", event: s.event, solves: localBackup.solves[s.id] }));
+      const add = localBackup.sessions.filter(s => (localBackup.solves[s.id] || []).length).map(s => ({ name: s.name + (FB_CFG ? " (this device)" : " (this browser)"), event: s.event, solves: localBackup.solves[s.id] }));
       addImported(add); localBackup = null; $("#mergeLocal").remove();
+      // On the Google build the device copy now lives in the account, so don't offer it again.
+      if (FB_CFG) { try { localStorage.removeItem(LOCAL_KEY); } catch (e) { /* ignore */ } }
     });
+    if ($("#fbSignIn")) $("#fbSignIn").addEventListener("click", () => fbSignIn(() => openSettings("data")));
+    if ($("#fbSignOut")) $("#fbSignOut").addEventListener("click", () => { closeDialog(); fbSignOut(); });
     if (section === "data") setTimeout(() => $("#dataSection").scrollIntoView({ block: "start" }), 30);
   }
   function exportBody() {
@@ -2262,10 +2278,12 @@ if (typeof module !== "undefined") module.exports = Stats;
   }
   async function writeBoard() {
     if (mode !== "cloud" || !settings().shareBoard) return;
-    const events = myBests(), body = JSON.stringify(events);
+    const events = myBests(), doc = { uid: cloud.uid, events, updated: Date.now() };
+    if (cloud.kind === "firebase") { doc.name = boardName(); doc.photo = settings().boardPhoto === false ? "" : (cloud.me.avatarUrl || ""); }
+    const body = JSON.stringify([events, doc.name, doc.photo]);
     if (body === boardLast) return;
-    try { await retry(() => cloud.db.doc(`leaderboard/${cloud.uid}`).set({ uid: cloud.uid, events, updated: Date.now() })); boardLast = body; boardError = ""; }
-    catch (e) { boardError = e && e.code === "invalid_argument" ? "Your access to this page doesn't allow posting to the board. The owner can invite you by email as an Editor." : "Couldn't post your bests. Try again later."; renderBoardBody(); }
+    try { await retry(() => cloud.db.doc(`leaderboard/${cloud.uid}`).set(doc)); boardLast = body; boardError = ""; }
+    catch (e) { boardError = e && e.code === "permission_denied" ? "The board refused your entry. Check that the Firestore rules are published." : e && e.code === "invalid_argument" ? "Your access to this page doesn't allow posting to the board. The owner can invite you by email as an Editor." : "Couldn't post your bests. Try again later."; renderBoardBody(); }
   }
   async function removeBoardEntry() {
     if (mode !== "cloud") return;
@@ -2280,11 +2298,12 @@ if (typeof module !== "undefined") module.exports = Stats;
   async function renderBoardBody() {
     const box = $("#boardBody"); if (!box) return;
     const dec = settings().decimals, ev = boardEvent;
-    const rows = boardDocs.filter(d => d && d.uid && d.events && d.events[ev]).map(d => ({ uid: d.uid, updated: d.updated, ...d.events[ev] }));
+    const rows = boardDocs.filter(d => d && d.uid && d.events && d.events[ev]).map(d => ({ uid: d.uid, updated: d.updated, who: String(d.name || ""), photo: String(d.photo || ""), ...d.events[ev] }));
     const m = boardMetric;
     rows.sort((a, b) => (a[m] ?? Infinity) - (b[m] ?? Infinity));
     let profiles = {};
-    if (rows.length && cloud.user) { try { profiles = await cloud.user.profiles(rows.map(r => r.uid)); } catch (e) { profiles = {}; } }
+    if (cloud.kind === "firebase") profiles = Object.fromEntries(rows.map(r => [r.uid, { name: r.who, avatarUrl: /^https:\/\//.test(r.photo) ? r.photo : "" }]));
+    else if (rows.length && cloud.user) { try { profiles = await cloud.user.profiles(rows.map(r => r.uid)); } catch (e) { profiles = {}; } }
     if (!$("#boardBody")) return;
     if (!rows.length) { box.innerHTML = `<div class="empty">Nobody has shared ${esc(P.eventById(ev).name)} times yet.${settings().shareBoard ? "" : " Turn on sharing above to be the first."}</div>`; return; }
     const th = (k, l) => `<th scope="col" class="${m === k ? "sorted" : ""}">${l}</th>`;
@@ -2294,8 +2313,14 @@ if (typeof module !== "undefined") module.exports = Stats;
         `<td class="${m === "single" ? "sorted" : ""}">${S.fmt(r.single, dec)}</td><td class="${m === "ao5" ? "sorted" : ""}">${S.fmt(r.ao5, dec, true)}</td><td class="${m === "ao12" ? "sorted" : ""}">${S.fmt(r.ao12, dec, true)}</td><td>${r.count || 0}</td></tr>`;
     }).join("")}</tbody></table></div>${boardError ? `<div class="note" style="color:var(--hold)">${esc(boardError)}</div>` : ""}`;
   }
+  function boardName() { return String(settings().boardName || (cloud && cloud.me.name) || "Cuber").trim().slice(0, 40) || "Cuber"; }
   function openBoard() {
     boardEvent = boardEvent || cur().event;
+    if (FB_CFG && mode !== "cloud") {
+      openDialog("Friends", `<div class="callout"><strong>Sign in with Google to join the friends board.</strong><div class="note">Friends who sign in on this site can see each other's best single, ao5 and ao12 for each puzzle. Your solves and scrambles stay private.</div><div class="row"><button class="btn primary" type="button" id="boardSignIn">Sign in with Google</button></div></div>`, `<button class="btn primary" type="button" data-close>Done</button>`);
+      $("#boardSignIn").addEventListener("click", () => fbSignIn(() => { closeDialog(); }));
+      return;
+    }
     if (mode !== "cloud") {
       openDialog("Friends", `<div class="callout"><strong>The friends board needs a claude.ai account.</strong><div class="note">${cloudBroken ? "Your access to this page can read but not save. Ask the person who shared it to invite you by email as an Editor, then reload." : "Open this page on claude.ai while signed in. Everyone who joins sees each other's best single, ao5 and ao12 for each puzzle."}</div></div>`, `<button class="btn primary" type="button" data-close>Done</button>`);
       return;
@@ -2303,13 +2328,210 @@ if (typeof module !== "undefined") module.exports = Stats;
     const evOpts = P.EVENTS.map(e => `<option value="${e.id}" ${e.id === boardEvent ? "selected" : ""}>${esc(e.name)}</option>`).join("");
     openDialog("Friends", `<div class="field"><label for="shareToggle">Share my bests on this board<small>Posts your best single, ao5 and ao12 per puzzle, plus solve counts. Your solves and scrambles stay private.</small></label><input type="checkbox" class="switch" id="shareToggle" ${settings().shareBoard ? "checked" : ""}></div>
       <div class="row" style="flex-wrap:wrap"><select id="boardEvent" aria-label="Puzzle">${evOpts}</select><div class="seg" role="group" aria-label="Rank by" id="boardMetric">${["single", "ao5", "ao12"].map(k => `<button type="button" data-m="${k}" aria-pressed="${k === boardMetric}">${k}</button>`).join("")}</div></div>
+      ${cloud.kind === "firebase" ? `<div class="field"><label for="boardNameIn">Name on the board</label><input class="input" id="boardNameIn" maxlength="40" value="${esc(boardName())}" style="width:12em"></div>
+      <div class="field"><label for="boardPhotoIn">Show my Google photo</label><input type="checkbox" class="switch" id="boardPhotoIn" ${settings().boardPhoto === false ? "" : "checked"}></div>` : ""}
       <div id="boardBody"><div class="empty">Loading the board…</div></div>
-      <div class="note">Friends join by opening this page while signed in to claude.ai. Each person needs permission to save: share the page with them by email as an Editor (or, in a Team workspace, as a Contributor).</div>`,
+      <div class="note">${cloud.kind === "firebase"
+        ? "Anyone who signs in on this site can see the board. To add friends, send them the link: they sign in with Google and turn on sharing."
+        : "Friends join by opening this page while signed in to claude.ai. Each person needs permission to save: share the page with them by email as an Editor (or, in a Team workspace, as a Contributor)."}</div>`,
       `<button class="btn primary" type="button" data-close>Done</button>`);
+    if ($("#boardNameIn")) {
+      $("#boardNameIn").addEventListener("change", e => { setSetting("boardName", e.target.value.trim().slice(0, 40)); scheduleBoard(0); });
+      $("#boardPhotoIn").addEventListener("change", e => { setSetting("boardPhoto", e.target.checked); scheduleBoard(0); });
+    }
     $("#shareToggle").addEventListener("change", e => { setSetting("shareBoard", e.target.checked); renderBoardBody(); });
     $("#boardEvent").addEventListener("change", e => { boardEvent = e.target.value; renderBoardBody(); });
     $("#boardMetric").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; boardMetric = b.dataset.m; $("#boardMetric").querySelectorAll("[data-m]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); renderBoardBody(); });
     subscribeBoard(); renderBoardBody();
+  }
+
+  function setChip(me) {
+    const chip = $("#accountChip"), old = chip.querySelector("img");
+    if (old) old.remove();
+    $("#accountName").textContent = me ? (me.name || "Signed in") : "This device";
+    if (me && me.avatarUrl) { const img = document.createElement("img"); img.alt = ""; img.referrerPolicy = "no-referrer"; img.src = me.avatarUrl; chip.prepend(img); }
+  }
+
+  // ---------------- Google sign-in (home-screen site) ----------------
+  let fb = null, fbLoading = null, fbAuthResolved = false, fbRetryUid = null;
+  const LAST_UID = LOCAL_KEY + ".lastUid";
+  function loadFirebase() {
+    if (fb) return Promise.resolve(fb);
+    if (fbLoading) return fbLoading;
+    fbLoading = (async () => {
+      const [A0, A, F] = await Promise.all([import(FB_BASE + "firebase-app.js"), import(FB_BASE + "firebase-auth.js"), import(FB_BASE + "firebase-firestore.js")]);
+      const app = A0.initializeApp(FB_CFG);
+      const auth = A.getAuth(app);
+      let fs;
+      try { fs = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
+      catch (e) { fs = F.getFirestore(app); }
+      if (window.__FIREBASE_EMULATORS) {
+        const em = window.__FIREBASE_EMULATORS;
+        if (em.auth) A.connectAuthEmulator(auth, em.auth, { disableWarnings: true });
+        if (em.firestore) F.connectFirestoreEmulator(fs, em.firestore[0], em.firestore[1]);
+      }
+      fb = { app, auth, fs, A, F };
+      return fb;
+    })();
+    fbLoading.catch(() => { fbLoading = null; });
+    return fbLoading;
+  }
+  // Adapts Firestore to the small get/set/delete/onSnapshot shape the sync code uses.
+  function fbDb() {
+    const { F, fs } = fb;
+    const CODES = { "permission-denied": "permission_denied", unauthenticated: "permission_denied", unavailable: "unavailable", "deadline-exceeded": "unavailable", "resource-exhausted": "resource_exhausted", "failed-precondition": "unavailable" };
+    const norm = e => { const err = new Error((e && e.message) || "Firestore error"); err.code = CODES[e && e.code] || (e && e.code) || "unknown"; return err; };
+    const wrap = p => p.catch(e => { throw norm(e); });
+    const docApi = path => ({
+      get: src => {
+        const ref = F.doc(fs, path);
+        const fn = src === "cache" ? F.getDocFromCache : src === "server" ? F.getDocFromServer : F.getDoc;
+        return wrap(fn(ref)).then(snap => ({ exists: snap.exists(), data: () => snap.data() }));
+      },
+      set: d => wrap(F.setDoc(F.doc(fs, path), d)),
+      delete: () => wrap(F.deleteDoc(F.doc(fs, path))),
+      collection: c => collApi(path + "/" + c),
+    });
+    const collApi = path => ({
+      doc: id => docApi(path + "/" + id),
+      onSnapshot: (next, err) => F.onSnapshot(F.collection(fs, path), snap => next({ docs: snap.docs.map(d => ({ id: d.id, data: () => d.data() })) }), e => { if (err) err(norm(e)); }),
+    });
+    return { doc: docApi, collection: collApi };
+  }
+  const SIGNIN_ERRORS = {
+    "auth/popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site, then try again.",
+    "auth/unauthorized-domain": "This site isn't on Firebase's allowed list yet. Add eito-okada.github.io under Authentication → Settings → Authorized domains.",
+    "auth/operation-not-allowed": "Google sign-in isn't turned on yet. Enable it under Authentication → Sign-in method → Google.",
+    "auth/network-request-failed": "No connection. Try again when you're online.",
+    "auth/operation-not-supported-in-this-environment": "Sign-in doesn't work in this view. Open the site in Safari or Chrome and sign in there.",
+    "auth/web-storage-unsupported": "Sign-in needs site storage, which this browser has turned off.",
+  };
+  function fbSignIn(after) {
+    if (!fb) {
+      toast(navigator.onLine === false ? "Signing in needs a connection." : "Still connecting to Google. Try again in a moment.");
+      loadFirebase().catch(() => {});
+      return;
+    }
+    // Called straight from the tap so the browser allows the sign-in window.
+    fb.A.signInWithPopup(fb.auth, new fb.A.GoogleAuthProvider())
+      .then(() => { if (after) after(); })
+      .catch(e => {
+        const code = e && e.code;
+        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request" || code === "auth/user-cancelled") return;
+        toast(SIGNIN_ERRORS[code] || `Couldn't sign in (${code || "unknown error"}).`);
+      });
+  }
+  async function fbSignOut() {
+    if (!fb) return;
+    try { if (mode === "cloud") { clearTimeout(flushTimer); await Promise.race([flush(), new Promise(r => setTimeout(r, 3000))]); } } catch (e) { /* ignore */ }
+    try { await fb.A.signOut(fb.auth); } catch (e) { toast("Couldn't sign out. Try again."); }
+  }
+  function busyTiming() { return T.state !== "idle" || T.inspecting; }
+  function pendingChanges() { return flushing || dirty.profile || Object.keys(dirty.chunks).length || dirty.dropped.length; }
+  function applyAccountData(remote) {
+    data = normalize(remote);
+    applySettings(); renderAll();
+    const h = H(); if (h.pos >= 0 && h.event === cur().event) renderScramble(); else nextScramble();
+  }
+  async function fbOnUser(user) {
+    const loading = $("#loading");
+    if (!user) {
+      // Signed out: back to what's saved on this device.
+      try { localStorage.removeItem(LAST_UID); } catch (e) { /* ignore */ }
+      if (boardUnsub) { boardUnsub(); boardUnsub = null; }
+      clearTimeout(flushTimer); clearTimeout(boardTimer);
+      dirty.profile = false; dirty.chunks = {}; dirty.dropped = []; boardLast = "";
+      const wasCloud = mode === "cloud";
+      mode = "local"; cloud = null; localBackup = null; fbRetryUid = null;
+      setChip(null); setSync("local");
+      loading.hidden = true;
+      if (wasCloud) { applyAccountData(Local.load()); toast("Signed out. Showing solves saved on this device."); }
+      return;
+    }
+    try { localStorage.setItem(LAST_UID, user.uid); } catch (e) { /* ignore */ }
+    const me = { id: user.uid, name: user.displayName || "", email: user.email || "", avatarUrl: user.photoURL || "" };
+    cloud = { kind: "firebase", db: fbDb(), user: null, uid: user.uid, me, profilePath: `users/${user.uid}` };
+    setChip(me); setSync("saving", "Loading your account…");
+    const deviceData = Local.load();
+    const hasDeviceSolves = d => d && d.sessions && d.sessions.some(s => ((d.solves || {})[s.id] || []).length);
+    // 1) this device's saved copy of the account (fast, works offline)
+    let remote = null;
+    try { remote = await loadCloud("cache"); } catch (e) { remote = null; }
+    if (!cloud || cloud.uid !== user.uid) return;
+    if (remote) {
+      mode = "cloud"; fbRetryUid = null;
+      localBackup = hasDeviceSolves(deviceData) ? normalize(deviceData) : null;
+      if (!busyTiming()) applyAccountData(remote);
+      loading.hidden = true;
+      setSync("saved");
+      fbRefresh();
+      if (settings().shareBoard) scheduleBoard(1500);
+      return;
+    }
+    // 2) nothing on this device yet: ask the server
+    try { remote = await loadCloud("server"); }
+    catch (e) {
+      if (!cloud || cloud.uid !== user.uid) return;
+      cloud = null; mode = "local"; fbRetryUid = user.uid;
+      setChip(me); setSync("error", "Couldn't reach your Google account. Solves are saved on this device for now.");
+      loading.hidden = true;
+      toast(e && e.code === "permission_denied" ? "Your account refused access. Check that the Firestore rules are published." : "Couldn't reach your Google account. Solves are saved on this device for now.");
+      return;
+    }
+    if (!cloud || cloud.uid !== user.uid) return;
+    mode = "cloud"; fbRetryUid = null;
+    if (remote) {
+      localBackup = hasDeviceSolves(deviceData) ? normalize(deviceData) : null;
+      if (!busyTiming()) applyAccountData(remote);
+      setSync("saved");
+    } else {
+      // First sign-in: this device's solves become the account's starting point.
+      localBackup = null;
+      markAllDirty();
+      if (hasDeviceSolves(deviceData)) toast("Signed in. Your solves on this device are now saved to your account.");
+    }
+    loading.hidden = true;
+    if (settings().shareBoard) scheduleBoard(1500);
+  }
+  // Pick up changes made on another device when the app comes back to the front.
+  let refreshing = false;
+  async function fbRefresh() {
+    if (!cloud || cloud.kind !== "firebase" || mode !== "cloud" || refreshing || navigator.onLine === false) return;
+    refreshing = true;
+    const uid = cloud.uid;
+    try {
+      const remote = await loadCloud("server");
+      if (!remote || !cloud || cloud.uid !== uid || mode !== "cloud" || pendingChanges() || busyTiming()) return;
+      const now = JSON.stringify({ s: data.sessions.map(x => [x.id, x.name, x.event]), v: data.solves, c: data.current });
+      const next = normalize(remote), then = JSON.stringify({ s: next.sessions.map(x => [x.id, x.name, x.event]), v: next.solves, c: next.current });
+      if (now !== then) applyAccountData(remote);
+    } catch (e) { /* offline or busy; the next visit will try again */ }
+    finally { refreshing = false; }
+  }
+  function initGoogle() {
+    let lastUid = null;
+    try { lastUid = localStorage.getItem(LAST_UID); } catch (e) { lastUid = null; }
+    const loading = $("#loading");
+    if (lastUid) {
+      // Was signed in last time: hold the timer until the account's solves are on screen.
+      $("#loadingMsg").textContent = "Loading your solves…";
+      loading.hidden = false;
+      const skip = setTimeout(() => { $("#skipLoading").hidden = false; }, 4000);
+      $("#skipLoading").onclick = () => { loading.hidden = true; };
+      const stop = () => clearTimeout(skip);
+      setTimeout(() => { stop(); if (!fbAuthResolved) loading.hidden = true; }, 12000);
+    }
+    loadFirebase().then(() => {
+      fb.A.onAuthStateChanged(fb.auth, user => { fbAuthResolved = true; fbOnUser(user); });
+    }).catch(() => {
+      loading.hidden = true;
+      if (lastUid) setSync("error", "Couldn't load Google sign-in. Solves are saved on this device for now.");
+    });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fbRefresh(); });
+    addEventListener("online", () => {
+      if (fbRetryUid && fb && fb.auth.currentUser && fb.auth.currentUser.uid === fbRetryUid) fbOnUser(fb.auth.currentUser);
+      else fbRefresh();
+    });
   }
 
   // ---------------- misc UI ----------------
@@ -2369,7 +2591,7 @@ if (typeof module !== "undefined") module.exports = Stats;
   $("#accountChip").addEventListener("click", () => openSettings("data"));
   $("#openCharts").addEventListener("click", openCharts);
   $("#openBoard").addEventListener("click", openBoard);
-  if (STANDALONE) $("#openBoard").hidden = true;
+  if (STANDALONE && !FB_CFG) $("#openBoard").hidden = true;
   // Full screen: only offered where the browser allows it (most phones inside Claude do not).
   const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
   const fsEnabled = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
@@ -2429,6 +2651,7 @@ if (typeof module !== "undefined") module.exports = Stats;
     data = normalize(local);
     applySettings(); renderAll(); nextScramble();
     setSync("local");
+    if (FB_CFG) { initGoogle(); return; }
     const hasClaude = window.claude && typeof window.claude.use === "function";
     if (!hasClaude) return;
     const loading = $("#loading");
@@ -2442,7 +2665,7 @@ if (typeof module !== "undefined") module.exports = Stats;
       if (!db || !user) return;
       const me = await user.me();
       if (!me || !me.id) return;
-      cloud = { db, user, uid: me.id, me };
+      cloud = { kind: "claude", db, user, uid: me.id, me, profilePath: `data/users/${me.id}/profile` };
       const remote = await loadCloud();
       if (skipped) { cloud = null; return; }
       mode = "cloud";
@@ -2454,8 +2677,7 @@ if (typeof module !== "undefined") module.exports = Stats;
         // First visit with an account: move this browser's data into the account.
         markAllDirty();
       }
-      $("#accountName").textContent = me.name || "Signed in";
-      if (me.avatarUrl) { const img = document.createElement("img"); img.alt = ""; img.src = me.avatarUrl; $("#accountChip").prepend(img); }
+      setChip(me);
       if (!dirty.profile && !Object.keys(dirty.chunks).length) setSync("saved"); else setSync("saving");
       applySettings(); renderAll();
       if (H().event !== cur().event || H().pos < 0) nextScramble(); else renderScramble();
@@ -2470,7 +2692,12 @@ if (typeof module !== "undefined") module.exports = Stats;
   boot();
 
   // test hook (harmless in production)
-  window.__ct = { get data() { return data; }, get mode() { return mode; }, T, S, flush, myBests, changed: changedSolves, render: () => renderAll(), wholeSeconds, get wakeLock() { return wakeLock; }, STANDALONE };
+  window.__ct = { get data() { return data; }, get mode() { return mode; }, T, S, flush, myBests, changed: changedSolves, render: () => renderAll(), wholeSeconds, get wakeLock() { return wakeLock; }, STANDALONE, get cloudKind() { return cloud && cloud.kind; }, get localBackup() { return localBackup; } };
+  // Test-only: sign in against the local emulator without the Google window. Never active on the real site.
+  if (window.__FIREBASE_EMULATORS) window.__ct.emuSignIn = async (sub, name) => {
+    const f = await loadFirebase();
+    return f.A.signInWithCredential(f.auth, f.A.GoogleAuthProvider.credential(JSON.stringify({ sub, email: sub + "@example.com", name, picture: "https://example.com/" + sub + ".png" })));
+  };
 })();
 
 </script>
