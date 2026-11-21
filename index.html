@@ -1,0 +1,2480 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e8ebef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111419" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Speedcube">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000;overscroll-behavior-y:none}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<script>window.__SPEEDCUBE_STANDALONE = true;</script>
+<title>Speedcube Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Martian+Mono:wght@300;400;500&family=Share+Tech+Mono&display=swap">
+</head><body>
+<style>
+/* Layout: a logbook column (session, averages, solves) beside a wide timing stage; one column on phones, stage first. */
+:root {
+  --ground: #e8ebef;
+  --panel: #f7f8fa;
+  --raised: #ffffff;
+  --ink: #141a23;
+  --muted: #5a6474;
+  --line: #d1d7df;
+  --accent: #c94a17;
+  --on-accent: #ffffff;
+  --hold: #c8372a;
+  --ready: #128a47;
+  --warn: #a8650c;
+  --sticker-line: #161a20;
+  --shadow: 0 1px 0 rgba(20, 26, 35, .06), 0 8px 24px -12px rgba(20, 26, 35, .25);
+  --font-display: "Martian Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --timer-font: var(--font-display);
+  --timer-scale: 1;
+  --scramble-scale: 1;
+  --preview-scale: 1;
+  --quick-scale: 1;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #111419; --panel: #181c23; --raised: #1f242d; --ink: #e8ecf1; --muted: #8d97a5; --line: #2b313b;
+    --accent: #ff7d42; --on-accent: #1a0d05; --hold: #ff6b5c; --ready: #3ccf7f; --warn: #f0b04a; --sticker-line: #07080a;
+    --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 10px 30px -14px rgba(0, 0, 0, .7); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #111419; --panel: #181c23; --raised: #1f242d; --ink: #e8ecf1; --muted: #8d97a5; --line: #2b313b;
+  --accent: #ff7d42; --on-accent: #1a0d05; --hold: #ff6b5c; --ready: #3ccf7f; --warn: #f0b04a; --sticker-line: #07080a;
+  --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 10px 30px -14px rgba(0, 0, 0, .7); color-scheme: dark;
+}
+/* Skins chosen in Settings override the viewer theme. */
+:root[data-skin="light"] {
+  --ground: #e8ebef; --panel: #f7f8fa; --raised: #fff; --ink: #141a23; --muted: #5a6474; --line: #d1d7df;
+  --accent: #c94a17; --on-accent: #fff; --hold: #c8372a; --ready: #128a47; --warn: #a8650c; --sticker-line: #161a20; color-scheme: light;
+}
+:root[data-skin="dark"] {
+  --ground: #111419; --panel: #181c23; --raised: #1f242d; --ink: #e8ecf1; --muted: #8d97a5; --line: #2b313b;
+  --accent: #ff7d42; --on-accent: #1a0d05; --hold: #ff6b5c; --ready: #3ccf7f; --warn: #f0b04a; --sticker-line: #07080a; color-scheme: dark;
+}
+:root[data-skin="stackmat"] {
+  --ground: #b9c2b0; --panel: #c8d0bf; --raised: #d6ddcd; --ink: #18200f; --muted: #46523a; --line: #9eaa93;
+  --accent: #2d5a2e; --on-accent: #eaf2df; --hold: #8f2418; --ready: #1f6b2c; --warn: #6e4f0d; --sticker-line: #18200f; color-scheme: light;
+  --shadow: none;
+}
+:root[data-skin="midnight"] {
+  --ground: #0b1022; --panel: #111833; --raised: #18213f; --ink: #dfe6ff; --muted: #8e9bc7; --line: #26315a;
+  --accent: #8aa8ff; --on-accent: #0b1022; --hold: #ff7a8a; --ready: #56e0a0; --warn: #ffc56b; --sticker-line: #05070f; color-scheme: dark;
+}
+:root[data-skin="contrast"] {
+  --ground: #000; --panel: #000; --raised: #000; --ink: #fff; --muted: #e0e0e0; --line: #fff;
+  --accent: #ffd60a; --on-accent: #000; --hold: #ff5a4a; --ready: #49ff8c; --warn: #ffd60a; --sticker-line: #000; color-scheme: dark;
+  --shadow: none;
+}
+:root[data-timer-font="jetbrains"] { --timer-font: var(--font-data); }
+:root[data-timer-font="lcd"] { --timer-font: "Share Tech Mono", ui-monospace, Menlo, monospace; }
+:root[data-timer-font="sans"] { --timer-font: var(--font-body); }
+
+html, body { height: 100%; }
+body {
+  background: var(--ground); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ground); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+/* ---------- shell ---------- */
+.app {
+  display: grid; grid-template-columns: minmax(270px, 320px) minmax(0, 1fr); min-height: 100%;
+}
+.side {
+  background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0;
+  height: 100vh; height: 100dvh; position: sticky; top: 0;
+}
+.side-inner { display: flex; flex-direction: column; gap: 14px; padding-block: 16px 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; min-height: 0; flex: 1; }
+.brand { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wordmark { font-family: var(--font-display); font-size: 13px; letter-spacing: .02em; font-weight: 500; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.wordmark i { display: inline-grid; grid-template-columns: repeat(3, 5px); gap: 1.5px; }
+.wordmark i b { width: 5px; height: 5px; border-radius: 1px; background: var(--muted); opacity: .45; }
+.wordmark i b:nth-child(5) { background: var(--accent); opacity: 1; }
+.account {
+  display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: var(--raised); border-radius: 99px;
+  padding: 3px 10px 3px 3px; font-size: 12px; color: var(--muted); max-width: 170px; min-width: 0;
+}
+.account img { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+.account span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+.sync-dot[data-s="saved"] { background: var(--ready); }
+.sync-dot[data-s="saving"] { background: var(--warn); }
+.sync-dot[data-s="error"] { background: var(--hold); }
+
+.label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.row { display: flex; gap: 8px; align-items: center; }
+.grow { flex: 1; min-width: 0; }
+select, .input, textarea {
+  background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; max-width: 100%;
+}
+textarea { resize: vertical; }
+.btn {
+  border: 1px solid var(--line); background: var(--raised); border-radius: 8px; padding: 7px 12px; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 500; white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.danger { color: var(--hold); }
+.btn.danger.solid { background: var(--hold); border-color: var(--hold); color: #fff; }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn.ghost:hover { background: var(--raised); border-color: var(--line); }
+.icon-btn { width: 34px; height: 34px; padding: 0; justify-content: center; }
+.icon-btn svg, .btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* averages */
+.stats { border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); overflow: hidden; }
+.stats table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.stats th { text-align: left; font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px 6px; }
+.stats th:not(:first-child), .stats td:not(:first-child) { text-align: right; }
+.stats td { padding: 4px 10px; border-top: 1px solid var(--line); }
+.stats td:first-child { color: var(--muted); font-family: var(--font-data); font-size: 12px; }
+.stats .cell { background: none; border: 0; padding: 2px 4px; margin: -2px -4px; border-radius: 5px; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.stats .cell:hover:not(:disabled) { background: var(--panel); color: var(--accent); }
+.stats .cell:disabled { cursor: default; color: var(--muted); }
+.stats .pb { color: var(--accent); }
+.stats-foot { display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+
+/* solve log */
+.log { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.log-head { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; }
+.log-cols, .log-row { display: grid; grid-template-columns: 3.2em 1fr 1fr 1fr; gap: 6px; align-items: center; }
+.log-cols { font-size: 11px; color: var(--muted); padding: 0 8px 4px; border-bottom: 1px solid var(--line); }
+.log-cols span:not(:first-child), .log-row span:not(:first-child) { text-align: right; }
+.log-list { overflow-y: auto; min-height: 120px; flex: 1; padding-bottom: 16px; overscroll-behavior: contain; }
+.log-row {
+  width: 100%; border: 0; background: none; text-align: left; padding: 5px 8px; border-radius: 6px; font-family: var(--font-data);
+  font-variant-numeric: tabular-nums; font-size: 13px;
+}
+.log-row:hover { background: var(--raised); }
+.log-row .idx { color: var(--muted); font-size: 11px; }
+.log-row .t { font-weight: 500; }
+.log-row .t.dnf { color: var(--hold); }
+.log-row .t.pb { color: var(--accent); }
+.log-row .c { color: var(--muted); }
+.log-row .has-note::after { content: "•"; color: var(--accent); margin-left: 3px; }
+.empty { color: var(--muted); font-size: 13px; padding: 14px 8px; }
+.more { margin: 8px auto; display: flex; }
+
+/* ---------- main stage ---------- */
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 100vh; min-height: 100dvh; position: relative; }
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-block: 12px 4px;
+  padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.topbar .spacer { flex: 1; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--raised); }
+.seg button { border: 0; background: none; padding: 6px 10px; font-size: 13px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.scramble-wrap { padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.scramble {
+  font-family: var(--font-data); font-size: calc(clamp(15px, 1.6vw, 21px) * var(--scramble-scale)); line-height: 1.55; word-spacing: .12em;
+  text-align: center; max-width: 60ch; margin: 6px auto 0; min-height: 3em; white-space: pre-line; overflow-wrap: anywhere; user-select: text;
+}
+.scramble.pending { color: var(--muted); }
+.scramble-meta { text-align: center; font-size: 12px; color: var(--muted); margin-top: 4px; min-height: 1.4em; }
+.stage {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; position: relative;
+  touch-action: none; user-select: none; -webkit-user-select: none; min-height: 300px; padding: 24px 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.timer {
+  font-family: var(--timer-font); font-variant-numeric: tabular-nums; font-weight: 400; line-height: 1;
+  font-size: calc(clamp(64px, 13vw, 190px) * var(--timer-scale)); letter-spacing: -.02em; transition: color .08s;
+  white-space: nowrap;
+}
+:root[data-timer-font="lcd"] .timer { letter-spacing: .02em; }
+.timer[data-state="holding"] { color: var(--hold); }
+.timer[data-state="ready"] { color: var(--ready); }
+.timer[data-state="inspecting"] { color: var(--muted); }
+.timer .pen { font-size: .38em; color: var(--hold); margin-left: .15em; vertical-align: .9em; }
+.hint { color: var(--muted); font-size: 13px; text-align: center; min-height: 1.4em; }
+.typing { display: flex; gap: 8px; }
+.typing .input { font-family: var(--font-data); font-size: 28px; width: 9ch; text-align: center; padding: 8px 12px; }
+.lastbar { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 34px; }
+.lastbar .btn { padding: 5px 10px; }
+.lastbar .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.quick { display: flex; gap: 1.4em; flex-wrap: wrap; justify-content: center; font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: calc(20px * var(--quick-scale)); color: var(--muted); }
+.quick b { color: var(--ink); font-weight: 500; margin-left: .35em; }
+.preview {
+  position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: 16px;
+  width: calc(230px * var(--preview-scale)); max-width: 42%; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 10px; box-shadow: var(--shadow); cursor: zoom-in;
+}
+.preview svg { width: 100%; height: auto; display: block; max-height: calc(200px * var(--preview-scale)); }
+.preview:empty { display: none; }
+
+/* the clock: caption above, running cue below */
+.clock { display: flex; flex-direction: column; align-items: center; gap: 10px; transition: transform .18s ease; }
+.tcap { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: var(--warn); min-height: 1.3em; }
+.cue { width: min(380px, 60vw); height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; visibility: hidden; position: relative; }
+.cue::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 34%; border-radius: inherit; background: var(--accent); animation: sweep 1.1s ease-in-out infinite alternate; }
+@keyframes sweep { from { transform: translateX(0); } to { transform: translateX(194%); } }
+@keyframes blink { 50% { opacity: .3; } }
+:root:is([data-cue="colorbar"], [data-cue="bar"]) .clock[data-state="running"] .cue { visibility: visible; }
+:root:is([data-cue="colorbar"], [data-cue="color"]) .timer[data-state="running"] { color: var(--accent); }
+:root[data-cue="blink"] .timer[data-state="running"] { animation: blink 1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .clock { transition: none; }
+  .cue::after { animation: none; width: 100%; }
+  :root[data-cue="blink"] .timer[data-state="running"] { animation: none; color: var(--accent); }
+}
+/* hide everything but the clock while timing, and centre the clock on the screen */
+body.focus .clock { transform: translateX(var(--shift, 0px)); }
+body.focus .side, body.focus .topbar, body.focus .scramble-wrap, body.focus .lastbar, body.focus .quick, body.focus .preview, body.focus .hint {
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+
+/* ---------- dialogs ---------- */
+dialog {
+  border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); padding: 0; box-shadow: var(--shadow);
+  width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 48px);
+}
+dialog::backdrop { background: rgba(10, 12, 16, .45); }
+.dlg { display: flex; flex-direction: column; max-height: calc(100dvh - 50px); }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px 10px; border-bottom: 1px solid var(--line); }
+.dlg-head h2 { margin: 0; font-size: 16px; font-weight: 600; text-wrap: balance; }
+.dlg-body { padding: 16px 18px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.dlg-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+legend { padding: 0; margin-bottom: 8px; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 34px; }
+.field > label, .field > .flabel { font-size: 14px; }
+.field small { display: block; color: var(--muted); font-size: 12px; }
+.field input[type="range"] { width: 150px; accent-color: var(--accent); }
+.switch { appearance: none; width: 38px; height: 22px; border-radius: 99px; background: var(--line); position: relative; cursor: pointer; transition: background .15s; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--raised); transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.switch:checked { background: var(--accent); }
+.switch:checked::after { transform: translateX(16px); }
+.swatches { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--panel); outline: 1px solid var(--line); padding: 0; }
+.swatch[aria-pressed="true"] { outline: 2px solid var(--ink); }
+input[type="color"] { width: 30px; height: 26px; border: 1px solid var(--line); border-radius: 6px; padding: 1px; background: var(--raised); }
+.note { font-size: 13px; color: var(--muted); }
+.note strong { color: var(--ink); font-weight: 600; }
+.callout { border: 1px solid var(--line); background: var(--raised); border-radius: var(--r); padding: 12px 14px; font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
+.kbd { font-family: var(--font-data); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--raised); }
+.big-time { font-family: var(--timer-font); font-size: 44px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.mono-block { font-family: var(--font-data); font-size: 14px; line-height: 1.6; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.solve-preview { max-width: 280px; }
+.solve-preview svg { width: 100%; height: auto; }
+.avg-list { display: flex; flex-direction: column; gap: 2px; }
+.avg-item { display: grid; grid-template-columns: 2.6em 6.5em minmax(0, 1fr); gap: 10px; padding: 6px 8px; border-radius: 6px; font-family: var(--font-data); font-size: 13px; align-items: baseline; border: 0; background: none; text-align: left; width: 100%; }
+.avg-item:hover { background: var(--raised); }
+.avg-item .s { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avg-item .trim { color: var(--muted); }
+.sess-list { display: flex; flex-direction: column; gap: 8px; }
+.sess-item { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto auto; gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); }
+.sess-item.current { border-color: var(--accent); }
+.sess-item .count { font-size: 12px; color: var(--muted); font-family: var(--font-data); white-space: nowrap; }
+.confirm-row { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; font-size: 13px; }
+.chart { width: 100%; overflow-x: auto; }
+.chart svg { width: 100%; min-width: 480px; height: auto; display: block; }
+.chart text { font-family: var(--font-data); font-size: 11px; fill: var(--muted); }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+.board { width: 100%; border-collapse: collapse; font-size: 13px; }
+.board th { text-align: right; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.board th:nth-child(2), .board td:nth-child(2) { text-align: left; }
+.board td { padding: 8px; border-bottom: 1px solid var(--line); text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.board td:nth-child(2) { font-family: var(--font-body); }
+.board tr.me td { background: var(--raised); }
+.board .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.board .who img { width: 24px; height: 24px; border-radius: 50%; }
+.board .rank { color: var(--muted); width: 2em; }
+.board .sorted { color: var(--ink); font-weight: 600; }
+.table-wrap { overflow-x: auto; }
+.toast {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 140%); transition: transform .2s, opacity .2s, visibility .2s;
+  background: var(--ink); color: var(--panel); border-radius: 10px; padding: 9px 10px 9px 14px; display: flex; gap: 12px; align-items: center;
+  font-size: 13px; z-index: 50; max-width: calc(100vw - 32px); box-shadow: var(--shadow); opacity: 0; visibility: hidden;
+}
+.toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; }
+.toast button { background: none; border: 1px solid currentColor; color: inherit; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 600; }
+.loading {
+  position: fixed; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--ground) 82%, transparent); z-index: 40;
+}
+.loading .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; align-items: center; box-shadow: var(--shadow); max-width: 320px; text-align: center; }
+.spinner { width: 22px; height: 22px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } .toast, .switch, .switch::after { transition: none; } }
+
+/* ---------- phones ---------- */
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .main { order: 1; min-height: auto; }
+  .side { order: 2; height: auto; position: static; border-right: 0; border-top: 1px solid var(--line); }
+  .side-inner { padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-bottom: 16px; }
+  .log-list { max-height: 60vh; }
+  .topbar, .scramble-wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+  .stage { min-height: 56vh; }
+  .preview { position: static; width: calc(220px * var(--preview-scale)); max-width: calc(100% - 32px); margin: 0 auto 16px; }
+  .topbar .hide-sm { display: none; }
+  .sess-item { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .sess-item select { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (max-width: 860px) { .mobile-brand { display: flex; } }
+@media (min-width: 861px) { .mobile-brand { display: none; } }
+</style>
+
+<div class="app" id="app">
+  <aside class="side" id="side" aria-label="Session and solves">
+    <div class="side-inner">
+      <div class="brand">
+        <div class="wordmark"><i aria-hidden="true"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></i>Speedcube Timer</div>
+        <button class="account" id="accountChip" type="button" title="Where your solves are saved"><span class="sync-dot" id="syncDot"></span><span id="accountName">This device</span></button>
+      </div>
+      <div class="row">
+        <select id="sessionSelect" class="grow" aria-label="Session"></select>
+        <button class="btn icon-btn" id="manageSessions" type="button" title="Manage sessions" aria-label="Manage sessions"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><path d="M18 16v6M15 19h6"/></svg></button>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="log">
+        <div class="log-head"><span class="label">Solves</span><button class="btn ghost" id="openCharts" type="button" style="padding:3px 8px;font-size:12px"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-7"/></svg>Charts</button></div>
+        <div class="log-cols"><span>#</span><span>time</span><span>ao5</span><span>ao12</span></div>
+        <div class="log-list" id="solveList"></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="topbar">
+      <select id="eventSelect" aria-label="Puzzle"></select>
+      <div class="seg" role="group" aria-label="Scramble">
+        <button type="button" id="prevScr" title="Previous scramble" aria-label="Previous scramble"><svg viewBox="0 0 24 24" width="16" height="16" style="stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button type="button" id="nextScr" title="Next scramble" aria-label="Next scramble"><svg viewBox="0 0 24 24" width="16" height="16" style="stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button type="button" id="editScr" title="Enter your own scramble">Edit</button>
+        <button type="button" id="copyScr" title="Copy scramble">Copy</button>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="fullscreenBtn" type="button" hidden title="Full screen" aria-label="Full screen"><svg viewBox="0 0 24 24" id="fsIcon"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="hide-sm" id="fsLabel">Full screen</span></button>
+      <button class="btn ghost" id="openBoard" type="button"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 6h3v2a3 3 0 0 1-3 3M7 6H4v2a3 3 0 0 0 3 3"/></svg><span class="hide-sm">Friends</span></button>
+      <button class="btn ghost" id="openSettings" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="hide-sm">Settings</span></button>
+    </div>
+    <div class="scramble-wrap">
+      <div class="scramble pending" id="scramble" aria-live="polite">Generating scramble…</div>
+      <div class="scramble-meta" id="scrambleMeta"></div>
+    </div>
+    <div class="stage" id="stage">
+      <div class="clock" id="clock" data-state="idle">
+        <div class="tcap" id="tcap" aria-hidden="true"></div>
+        <div class="timer num" id="timer" data-state="idle" aria-live="off">0.00</div>
+        <div class="cue" aria-hidden="true"></div>
+      </div>
+      <div class="typing" id="typingBox" hidden>
+        <input class="input" id="typeEntry" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Type a time">
+        <button class="btn primary" id="typeSubmit" type="button">Add</button>
+      </div>
+      <div class="hint" id="hint"></div>
+      <div class="lastbar" id="lastBar"></div>
+      <div class="quick" id="quick"></div>
+    </div>
+    <div class="preview" id="preview" title="Enlarge preview"></div>
+  </main>
+</div>
+
+<dialog id="dlg"><div class="dlg" id="dlgInner"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastAction" hidden></button></div>
+<div class="loading" id="loading" hidden><div class="card"><div class="spinner"></div><div id="loadingMsg">Loading your solves…</div><button class="btn" id="skipLoading" type="button" hidden>Use this device only</button></div></div>
+
+<script>
+// 3x3 cubie model, Kociemba two-phase solver, random-state 3x3 and 2x2 scramblers.
+// Self-contained: no outside references, so the same source can run in a Web Worker.
+function CubeSolverModule() {
+  "use strict";
+  // Corners: URF UFL ULB UBR DFR DLF DBL DRB. Edges: UR UF UL UB DR DF DL DB FR FL BL BR.
+  const BASE = [
+    { cp: [3,0,1,2,4,5,6,7], co: [0,0,0,0,0,0,0,0], ep: [3,0,1,2,4,5,6,7,8,9,10,11], eo: [0,0,0,0,0,0,0,0,0,0,0,0] }, // U
+    { cp: [4,1,2,0,7,5,6,3], co: [2,0,0,1,1,0,0,2], ep: [8,1,2,3,11,5,6,7,4,9,10,0], eo: [0,0,0,0,0,0,0,0,0,0,0,0] }, // R
+    { cp: [1,5,2,3,0,4,6,7], co: [1,2,0,0,2,1,0,0], ep: [0,9,2,3,4,8,6,7,1,5,10,11], eo: [0,1,0,0,0,1,0,0,1,1,0,0] }, // F
+    { cp: [0,1,2,3,5,6,7,4], co: [0,0,0,0,0,0,0,0], ep: [0,1,2,3,5,6,7,4,8,9,10,11], eo: [0,0,0,0,0,0,0,0,0,0,0,0] }, // D
+    { cp: [0,2,6,3,4,1,5,7], co: [0,1,2,0,0,2,1,0], ep: [0,1,10,3,4,5,9,7,8,2,6,11], eo: [0,0,0,0,0,0,0,0,0,0,0,0] }, // L
+    { cp: [0,1,3,7,4,5,2,6], co: [0,0,1,2,0,0,2,1], ep: [0,1,2,11,4,5,6,10,8,9,3,7], eo: [0,0,0,1,0,0,0,1,0,0,1,1] }, // B
+  ];
+  const FACES = "URFDLB";
+  const SUFFIX = ["", "2", "'"];
+
+  function solved() {
+    return { cp: [0,1,2,3,4,5,6,7], co: [0,0,0,0,0,0,0,0], ep: [0,1,2,3,4,5,6,7,8,9,10,11], eo: [0,0,0,0,0,0,0,0,0,0,0,0] };
+  }
+  // a then b
+  function mult(a, b) {
+    const r = { cp: new Array(8), co: new Array(8), ep: new Array(12), eo: new Array(12) };
+    for (let i = 0; i < 8; i++) { r.cp[i] = a.cp[b.cp[i]]; r.co[i] = (a.co[b.cp[i]] + b.co[i]) % 3; }
+    for (let i = 0; i < 12; i++) { r.ep[i] = a.ep[b.ep[i]]; r.eo[i] = (a.eo[b.ep[i]] + b.eo[i]) % 2; }
+    return r;
+  }
+  // 18 moves: m = face*3 + (power-1)
+  const MOVES = [];
+  for (let f = 0; f < 6; f++) {
+    let c = BASE[f];
+    for (let k = 0; k < 3; k++) { MOVES.push(c); c = mult(c, BASE[f]); }
+  }
+  function moveName(m) { return FACES[(m / 3) | 0] + SUFFIX[m % 3]; }
+  function parseMoves(str) {
+    const out = [];
+    for (const tok of str.trim().split(/\s+/)) {
+      if (!tok) continue;
+      const f = FACES.indexOf(tok[0]);
+      if (f < 0) throw new Error("bad move " + tok);
+      const k = tok.slice(1) === "2" ? 1 : tok.slice(1) === "'" ? 2 : 0;
+      out.push(f * 3 + k);
+    }
+    return out;
+  }
+  function applyMoves(c, moves) { for (const m of moves) c = mult(c, MOVES[m]); return c; }
+  function invertMoves(moves) { return moves.slice().reverse().map(m => ((m / 3) | 0) * 3 + (2 - (m % 3))); }
+
+  // ---------- coordinates ----------
+  const Cnk = []; for (let n = 0; n < 13; n++) { Cnk[n] = []; for (let k = 0; k < 13; k++) Cnk[n][k] = k === 0 ? 1 : n === 0 ? 0 : Cnk[n - 1][k - 1] + (Cnk[n - 1][k] || 0); }
+  const FACT = [1]; for (let i = 1; i < 13; i++) FACT[i] = FACT[i - 1] * i;
+
+  function getTwist(c) { let t = 0; for (let i = 0; i < 7; i++) t = t * 3 + c.co[i]; return t; }
+  function setTwist(c, t) { let s = 0; for (let i = 6; i >= 0; i--) { c.co[i] = t % 3; s += c.co[i]; t = (t / 3) | 0; } c.co[7] = (3 - (s % 3)) % 3; }
+  function getFlip(c) { let t = 0; for (let i = 0; i < 11; i++) t = t * 2 + c.eo[i]; return t; }
+  function setFlip(c, t) { let s = 0; for (let i = 10; i >= 0; i--) { c.eo[i] = t & 1; s += c.eo[i]; t >>= 1; } c.eo[11] = s % 2; }
+  function getSlice(c) { let r = 0, k = 0; for (let i = 0; i < 12; i++) if (c.ep[i] >= 8) { k++; r += Cnk[i][k]; } return r; }
+  function setSlice(c, r) {
+    const pos = new Array(12).fill(false);
+    for (let k = 4; k >= 1; k--) { let p = k - 1; while (Cnk[p + 1][k] <= r) p++; r -= Cnk[p][k]; pos[p] = true; }
+    let s = 8, o = 0;
+    for (let i = 0; i < 12; i++) c.ep[i] = pos[i] ? s++ : o++;
+  }
+  function getPerm(arr, n) {
+    let r = 0;
+    for (let i = 0; i < n; i++) { let c = 0; for (let j = i + 1; j < n; j++) if (arr[j] < arr[i]) c++; r += c * FACT[n - 1 - i]; }
+    return r;
+  }
+  function setPerm(arr, n, r, offset) {
+    const avail = []; for (let i = 0; i < n; i++) avail.push(i);
+    for (let i = 0; i < n; i++) { const f = FACT[n - 1 - i]; const q = (r / f) | 0; r %= f; arr[i + (offset || 0)] = avail.splice(q, 1)[0] + 0; }
+  }
+  function getCPerm(c) { return getPerm(c.cp, 8); }
+  function setCPerm(c, r) { setPerm(c.cp, 8, r); }
+  function getEPerm(c) { return getPerm(c.ep, 8); }
+  function setEPerm(c, r) { setPerm(c.ep, 8, r); for (let i = 8; i < 12; i++) c.ep[i] = i; }
+  function getSPerm(c) { return getPerm(c.ep.slice(8).map(x => x - 8), 4); }
+  function setSPerm(c, r) { const a = []; setPerm(a, 4, r); for (let i = 0; i < 4; i++) c.ep[8 + i] = a[i] + 8; for (let i = 0; i < 8; i++) c.ep[i] = i; }
+
+  const P2MOVES = [0, 1, 2, 4, 7, 9, 10, 11, 13, 16]; // U U2 U' R2 F2 D D2 D' L2 B2
+  const isP2 = new Array(18).fill(false); P2MOVES.forEach(m => (isP2[m] = true));
+
+  let T = null; // tables
+  function buildMoveTable(n, moves, set, get) {
+    const nm = moves.length; const t = new Uint16Array(n * nm);
+    for (let i = 0; i < n; i++) {
+      const c = solved(); set(c, i);
+      for (let j = 0; j < nm; j++) t[i * nm + j] = get(mult(c, MOVES[moves[j]]));
+    }
+    return t;
+  }
+  function buildPrune(n1, n2, mt1, mt2, nm, s1, s2) {
+    const N = n1 * n2; const t = new Int8Array(N).fill(-1);
+    t[s1 * n2 + s2] = 0; let done = 1, depth = 0;
+    while (done < N) {
+      const inv = done > N / 2; let found = 0;
+      for (let i = 0; i < N; i++) {
+        const a = (i / n2) | 0, b = i - a * n2;
+        if (inv) {
+          if (t[i] !== -1) continue;
+          for (let m = 0; m < nm; m++) { if (t[mt1[a * nm + m] * n2 + mt2[b * nm + m]] === depth) { t[i] = depth + 1; found++; break; } }
+        } else {
+          if (t[i] !== depth) continue;
+          for (let m = 0; m < nm; m++) { const j = mt1[a * nm + m] * n2 + mt2[b * nm + m]; if (t[j] === -1) { t[j] = depth + 1; found++; } }
+        }
+      }
+      if (!found) break;
+      done += found; depth++;
+    }
+    return t;
+  }
+  const ALL18 = []; for (let i = 0; i < 18; i++) ALL18.push(i);
+  function init() {
+    if (T) return T;
+    const s = solved();
+    const t = {};
+    t.twist = buildMoveTable(2187, ALL18, setTwist, getTwist);
+    t.flip = buildMoveTable(2048, ALL18, setFlip, getFlip);
+    t.slice = buildMoveTable(495, ALL18, setSlice, getSlice);
+    t.cperm = buildMoveTable(40320, P2MOVES, setCPerm, getCPerm);
+    t.eperm = buildMoveTable(40320, P2MOVES, setEPerm, getEPerm);
+    t.sperm = buildMoveTable(24, P2MOVES, setSPerm, getSPerm);
+    t.s0 = { twist: getTwist(s), flip: getFlip(s), slice: getSlice(s), cperm: getCPerm(s), eperm: getEPerm(s), sperm: getSPerm(s) };
+    t.pTS = buildPrune(2187, 495, t.twist, t.slice, 18, t.s0.twist, t.s0.slice);
+    t.pFS = buildPrune(2048, 495, t.flip, t.slice, 18, t.s0.flip, t.s0.slice);
+    t.pCS = buildPrune(40320, 24, t.cperm, t.sperm, 10, t.s0.cperm, t.s0.sperm);
+    t.pES = buildPrune(40320, 24, t.eperm, t.sperm, 10, t.s0.eperm, t.s0.sperm);
+    T = t;
+    return t;
+  }
+
+  // Returns move list solving cube c, or null.
+  function solve(c, maxLen, timeoutMs) {
+    const t = init();
+    maxLen = maxLen || 21;
+    const deadline = Date.now() + (timeoutMs || 3000);
+    const sol1 = [], sol2 = [];
+    let result = null, limit = maxLen, nodes = 0, timedOut = false;
+
+    function phase2(cube) {
+      const cp = getCPerm(cube), ep = getEPerm(cube), sp = getSPerm(cube);
+      const last = sol1.length ? sol1[sol1.length - 1] : -1;
+      const maxD = limit - sol1.length;
+      const h0 = Math.max(t.pCS[cp * 24 + sp], t.pES[ep * 24 + sp]);
+      for (let d = h0; d <= maxD; d++) {
+        if (search2(cp, ep, sp, d, last)) return true;
+      }
+      return false;
+    }
+    function search2(cp, ep, sp, togo, last) {
+      if (togo === 0) return cp === t.s0.cperm && ep === t.s0.eperm && sp === t.s0.sperm;
+      const lf = last < 0 ? -1 : (last / 3) | 0;
+      for (let i = 0; i < 10; i++) {
+        const m = P2MOVES[i], f = (m / 3) | 0;
+        if (f === lf || (lf >= 0 && f % 3 === lf % 3 && f < lf)) continue;
+        const cp2 = t.cperm[cp * 10 + i], ep2 = t.eperm[ep * 10 + i], sp2 = t.sperm[sp * 10 + i];
+        if (Math.max(t.pCS[cp2 * 24 + sp2], t.pES[ep2 * 24 + sp2]) >= togo) continue;
+        sol2.push(m);
+        if (search2(cp2, ep2, sp2, togo - 1, m)) return true;
+        sol2.pop();
+      }
+      return false;
+    }
+    function search1(tw, fl, sl, togo, last, cube0) {
+      if (++nodes % 2048 === 0 && Date.now() > deadline) { timedOut = true; return false; }
+      if (togo === 0) {
+        if (sol1.length && isP2[last]) return false;
+        const cube = applyMoves(cube0, sol1);
+        sol2.length = 0;
+        return phase2(cube);
+      }
+      const lf = last < 0 ? -1 : (last / 3) | 0;
+      for (let m = 0; m < 18; m++) {
+        const f = (m / 3) | 0;
+        if (f === lf || (lf >= 0 && f % 3 === lf % 3 && f < lf)) continue;
+        const tw2 = t.twist[tw * 18 + m], fl2 = t.flip[fl * 18 + m], sl2 = t.slice[sl * 18 + m];
+        const h = Math.max(t.pTS[tw2 * 495 + sl2], t.pFS[fl2 * 495 + sl2]);
+        if (h >= togo) continue;
+        sol1.push(m);
+        if (search1(tw2, fl2, sl2, togo - 1, m, cube0)) return true;
+        sol1.pop();
+        if (timedOut) return false;
+      }
+      return false;
+    }
+    const tw = getTwist(c), fl = getFlip(c), sl = getSlice(c);
+    const h0 = Math.max(t.pTS[tw * 495 + sl], t.pFS[fl * 495 + sl]);
+    // Try with the requested limit; if it takes too long, relax the limit.
+    for (; limit <= 30; limit++) {
+      timedOut = false;
+      for (let d = h0; d <= limit; d++) {
+        sol1.length = 0;
+        if (search1(tw, fl, sl, d, -1, c)) { result = sol1.concat(sol2); break; }
+        if (timedOut) break;
+      }
+      if (result) break;
+      if (!timedOut) continue;
+    }
+    return result;
+  }
+
+  function randInt(n, rng) { return Math.floor((rng || Math.random)() * n); }
+  function shuffle(a, rng) { for (let i = a.length - 1; i > 0; i--) { const j = randInt(i + 1, rng); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function parity(a) { let p = 0; for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) if (a[j] < a[i]) p ^= 1; return p; }
+  function randomCube(rng) {
+    const c = solved();
+    shuffle(c.cp, rng); shuffle(c.ep, rng);
+    if (parity(c.cp) !== parity(c.ep)) { const x = c.ep[0]; c.ep[0] = c.ep[1]; c.ep[1] = x; }
+    let s = 0; for (let i = 0; i < 7; i++) { c.co[i] = randInt(3, rng); s += c.co[i]; } c.co[7] = (3 - (s % 3)) % 3;
+    s = 0; for (let i = 0; i < 11; i++) { c.eo[i] = randInt(2, rng); s += c.eo[i]; } c.eo[11] = s % 2;
+    return c;
+  }
+  function sameCube(a, b) {
+    for (let i = 0; i < 8; i++) if (a.cp[i] !== b.cp[i] || a.co[i] !== b.co[i]) return false;
+    for (let i = 0; i < 12; i++) if (a.ep[i] !== b.ep[i] || a.eo[i] !== b.eo[i]) return false;
+    return true;
+  }
+  function scramble333(rng) {
+    for (;;) {
+      const c = randomCube(rng);
+      const sol = solve(c, 21, 4000);
+      if (!sol || sol.length < 2) continue;
+      return invertMoves(sol).map(moveName).join(" ");
+    }
+  }
+
+  // ---------- 2x2 (corners only; DBL fixed; moves U R F) ----------
+  let T2 = null;
+  const P222 = [0, 1, 2, 3, 4, 5, 7]; // positions/pieces except DBL(6)
+  function get2(c) {
+    const a = P222.map(p => { const v = c.cp[p]; return v === 7 ? 6 : v; });
+    let tw = 0; for (let i = 0; i < 6; i++) tw = tw * 3 + c.co[i];
+    return getPerm(a, 7) * 729 + tw;
+  }
+  function set2(idx) {
+    const c = solved();
+    const tw = idx % 729, pr = (idx / 729) | 0;
+    const a = []; setPerm(a, 7, pr);
+    for (let i = 0; i < 7; i++) c.cp[P222[i]] = a[i] === 6 ? 7 : a[i];
+    c.cp[6] = 6;
+    let t = tw, s = 0; for (let i = 5; i >= 0; i--) { c.co[i] = t % 3; s += c.co[i]; t = (t / 3) | 0; }
+    c.co[6] = 0; c.co[7] = (3 - (s % 3)) % 3;
+    return c;
+  }
+  function init2() {
+    if (T2) return T2;
+    const N = 5040 * 729;
+    // move tables on separate perm and twist coordinates
+    const permT = new Uint16Array(5040 * 9), twT = new Uint16Array(729 * 9);
+    for (let p = 0; p < 5040; p++) { const c = set2(p * 729); for (let m = 0; m < 9; m++) permT[p * 9 + m] = (get2(mult(c, MOVES[m])) / 729) | 0; }
+    for (let w = 0; w < 729; w++) { const c = set2(w); for (let m = 0; m < 9; m++) twT[w * 9 + m] = get2(mult(c, MOVES[m])) % 729; }
+    const dist = buildPrune(5040, 729, permT, twT, 9, 0, 0);
+    T2 = { permT, twT, dist, N };
+    return T2;
+  }
+  function scramble222(rng) {
+    const t = init2();
+    for (;;) {
+      const idx = randInt(t.N, rng);
+      if (t.dist[idx] < 4) continue;
+      let p = (idx / 729) | 0, w = idx % 729; const sol = [];
+      while (t.dist[p * 729 + w] > 0) {
+        const d = t.dist[p * 729 + w];
+        let moved = false;
+        for (let m = 0; m < 9; m++) {
+          const p2 = t.permT[p * 9 + m], w2 = t.twT[w * 9 + m];
+          if (t.dist[p2 * 729 + w2] === d - 1) { sol.push(m); p = p2; w = w2; moved = true; break; }
+        }
+        if (!moved) throw new Error("2x2 table inconsistent");
+      }
+      return invertMoves(sol).map(moveName).join(" ");
+    }
+  }
+
+  // Facelet string (URFDLB, 9 each) from cubie state, for cross-checking against the sticker model.
+  const cornerFacelet = [[8,9,20],[6,18,38],[0,36,47],[2,45,11],[29,26,15],[27,44,24],[33,53,42],[35,17,51]];
+  const edgeFacelet = [[5,10],[7,19],[3,37],[1,46],[32,16],[28,25],[30,43],[34,52],[23,12],[21,41],[50,39],[48,14]];
+  const cornerColor = [[0,1,2],[0,2,4],[0,4,5],[0,5,1],[3,2,1],[3,4,2],[3,5,4],[3,1,5]];
+  const edgeColor = [[0,1],[0,2],[0,4],[0,5],[3,1],[3,2],[3,4],[3,5],[2,1],[2,4],[5,4],[5,1]];
+  function toFacelets(c) {
+    const f = new Array(54);
+    for (let i = 0; i < 6; i++) f[i * 9 + 4] = i;
+    for (let i = 0; i < 8; i++) for (let n = 0; n < 3; n++) f[cornerFacelet[i][(n + c.co[i]) % 3]] = cornerColor[c.cp[i]][n];
+    for (let i = 0; i < 12; i++) for (let n = 0; n < 2; n++) f[edgeFacelet[i][(n + c.eo[i]) % 2]] = edgeColor[c.ep[i]][n];
+    return f;
+  }
+
+  return { solved, mult, MOVES, moveName, parseMoves, applyMoves, invertMoves, solve, randomCube, sameCube,
+    scramble333, scramble222, init, init2, toFacelets, getTwist, getFlip, getSlice };
+}
+if (typeof module !== "undefined") module.exports = CubeSolverModule;
+
+// Geometric sticker model: builds stickers by cutting face polygons with planes,
+// derives move permutations by rotating sticker centroids, and draws unfolded nets as SVG.
+const Geo = (function () {
+  "use strict";
+  const EPS = 1e-7;
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const norm = a => mul(a, 1 / Math.hypot(a[0], a[1], a[2]));
+  const lerp = (a, b, t) => add(a, mul(sub(b, a), t));
+  function rotate(p, axis, ang, origin) {
+    const o = origin || [0, 0, 0];
+    const v = sub(p, o), k = axis, c = Math.cos(ang), s = Math.sin(ang);
+    const r = add(add(mul(v, c), mul(cross(k, v), s)), mul(k, dot(k, v) * (1 - c)));
+    return add(r, o);
+  }
+  function centroid(poly) { let c = [0, 0, 0]; for (const p of poly) c = add(c, p); return mul(c, 1 / poly.length); }
+
+  function split(poly, n, d) {
+    const s = poly.map(p => dot(n, p) - d);
+    if (s.every(x => x >= -EPS) || s.every(x => x <= EPS)) return [poly];
+    const A = [], B = [];
+    for (let i = 0; i < poly.length; i++) {
+      const p = poly[i], q = poly[(i + 1) % poly.length], sp = s[i], sq = s[(i + 1) % poly.length];
+      if (sp >= -EPS) A.push(p);
+      if (sp <= EPS) B.push(p);
+      if ((sp > EPS && sq < -EPS) || (sp < -EPS && sq > EPS)) {
+        const x = lerp(p, q, sp / (sp - sq));
+        A.push(x); B.push(x);
+      }
+    }
+    return [A, B].filter(x => x.length >= 3);
+  }
+
+  function key(p) { return p.map(v => Math.round(v * 1e4)).join(","); }
+
+  function build(spec) {
+    const stickers = [];
+    spec.faces.forEach((face, fi) => {
+      let polys = [face.poly];
+      for (const cut of spec.cuts) { const next = []; for (const p of polys) next.push(...split(p, cut.n, cut.d)); polys = next; }
+      for (const poly of polys) stickers.push({ face: fi, poly, c: centroid(poly) });
+    });
+    const index = new Map();
+    stickers.forEach((s, i) => index.set(key(s.c), i));
+    const permCache = {};
+    function find(p) {
+      const k = index.get(key(p));
+      if (k !== undefined) return k;
+      let best = -1, bd = Infinity;
+      stickers.forEach((s, i) => { const dd = Math.hypot(...sub(s.c, p)); if (dd < bd) { bd = dd; best = i; } });
+      if (bd > 1e-3) throw new Error("sticker mapping failed");
+      return best;
+    }
+    function perm(name) {
+      if (permCache[name]) return permCache[name];
+      const mv = spec.moves[name];
+      if (!mv) throw new Error("unknown move " + name);
+      const axis = norm(mv.axis);
+      const dest = stickers.map((s, i) => (dot(axis, s.c) > mv.d ? find(rotate(s.c, axis, mv.angle)) : i));
+      permCache[name] = dest;
+      return dest;
+    }
+    return { spec, stickers, perm, solvedState: () => stickers.map(s => s.face) };
+  }
+
+  function apply(puz, state, name, times) {
+    const dest = puz.perm(name);
+    for (let t = 0; t < (times || 1); t++) {
+      const next = state.slice();
+      for (let i = 0; i < dest.length; i++) next[dest[i]] = state[i];
+      state = next;
+    }
+    return state;
+  }
+
+  // ---- nets ----
+  function sharedEdge(pa, pb) {
+    const hits = [];
+    for (const a of pa) for (const b of pb) if (Math.hypot(...sub(a, b)) < 1e-6) hits.push(a);
+    return hits.length >= 2 ? [hits[0], hits[1]] : null;
+  }
+  // Returns list of {face, xf} where xf maps a 3D point into the root plane.
+  function unfold(spec, tree) {
+    const out = [];
+    function walk(node, parentFace, parentXf) {
+      let xf = parentXf;
+      if (parentFace !== null) {
+        const P = spec.faces[parentFace], C = spec.faces[node.face];
+        const e = sharedEdge(P.poly, C.poly);
+        if (!e) throw new Error("faces not adjacent " + parentFace + " " + node.face);
+        const axis = norm(sub(e[1], e[0]));
+        const ang = Math.atan2(dot(cross(C.n, P.n), axis), dot(C.n, P.n));
+        const px = parentXf;
+        xf = p => px(rotate(p, axis, ang, e[0]));
+      }
+      out.push({ face: node.face, xf });
+      for (const ch of node.children || []) walk(ch, node.face, xf);
+    }
+    walk(tree, null, p => p);
+    return out;
+  }
+
+  function netLayout(puz) {
+    if (puz._net) return puz._net;
+    const spec = puz.spec;
+    const groups = spec.net.map(g => {
+      const root = spec.faces[g.tree.face];
+      const n = root.n;
+      const up = norm(sub(g.up, mul(n, dot(g.up, n))));
+      const right = norm(cross(up, n));
+      const o = centroid(root.poly);
+      const parts = unfold(spec, g.tree);
+      const xfOf = {}; parts.forEach(p => (xfOf[p.face] = p.xf));
+      const to2 = p => { const v = sub(p, o); return [dot(v, right), -dot(v, up)]; };
+      return { faces: parts.map(p => p.face), xfOf, to2, offset: g.offset || [0, 0] };
+    });
+    // Precompute 2D polygons for every sticker
+    const polys2 = puz.stickers.map(() => null);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const gx = [];
+    groups.forEach((g, gi) => {
+      let gminX = Infinity, gmaxX = -Infinity;
+      puz.stickers.forEach((s, i) => {
+        if (!(s.face in g.xfOf)) return;
+        const pts = s.poly.map(p => g.to2(g.xfOf[s.face](p)));
+        polys2[i] = { g: gi, pts };
+        for (const [x] of pts) { gminX = Math.min(gminX, x); gmaxX = Math.max(gmaxX, x); }
+      });
+      gx.push([gminX, gmaxX]);
+    });
+    // place groups left to right with a gap
+    let cursor = 0; const shift = [];
+    groups.forEach((g, gi) => { shift.push(cursor - gx[gi][0]); cursor += gx[gi][1] - gx[gi][0] + (spec.netGap || 0.4); });
+    polys2.forEach(p => {
+      if (!p) return;
+      p.pts = p.pts.map(([x, y]) => [x + shift[p.g], y]);
+      for (const [x, y] of p.pts) { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); }
+    });
+    puz._net = { polys2, box: [minX, minY, maxX, maxY] };
+    return puz._net;
+  }
+
+  function svg(puz, state, colors, opts) {
+    opts = opts || {};
+    const net = netLayout(puz);
+    const [x0, y0, x1, y1] = net.box;
+    const pad = 0.05 * Math.max(x1 - x0, y1 - y0);
+    const sw = (puz.spec.strokeWidth || 0.02) * Math.max(x1 - x0, y1 - y0) / 4;
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(x0 - pad).toFixed(3)} ${(y0 - pad).toFixed(3)} ${(x1 - x0 + 2 * pad).toFixed(3)} ${(y1 - y0 + 2 * pad).toFixed(3)}" role="img" aria-label="${opts.label || "Scramble preview"}">`;
+    net.polys2.forEach((p, i) => {
+      if (!p) return;
+      const pts = p.pts.map(([x, y]) => x.toFixed(3) + "," + y.toFixed(3)).join(" ");
+      s += `<polygon points="${pts}" fill="${colors[state[i]]}" stroke="var(--sticker-line, #111)" stroke-width="${sw.toFixed(4)}" stroke-linejoin="round"/>`;
+    });
+    return s + "</svg>";
+  }
+
+  // ---- puzzle specs ----
+  function cubeFaces() {
+    // order: U R F D L B  (matches the cubie facelet order)
+    const F = (n, up) => {
+      const r = cross(up, n); // right
+      const poly = [add(add(n, up), mul(r, -1)), add(add(n, up), r), add(sub(n, up), r), add(sub(n, up), mul(r, -1))];
+      return { n, poly };
+    };
+    return [F([0, 1, 0], [0, 0, -1]), F([1, 0, 0], [0, 1, 0]), F([0, 0, 1], [0, 1, 0]), F([0, -1, 0], [0, 0, 1]), F([-1, 0, 0], [0, 1, 0]), F([0, 0, -1], [0, 1, 0])];
+  }
+  const CUBE_NET = [{ up: [0, 1, 0], tree: { face: 2, children: [{ face: 0 }, { face: 1, children: [{ face: 5 }] }, { face: 3 }, { face: 4 }] } }];
+
+  function nxn(N) {
+    const faces = cubeFaces();
+    const cuts = [];
+    const axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    for (const a of axes) for (let k = 1; k < N; k++) cuts.push({ n: a, d: -1 + (2 * k) / N });
+    const moves = {};
+    const faceAxis = { U: [0, 1, 0], D: [0, -1, 0], R: [1, 0, 0], L: [-1, 0, 0], F: [0, 0, 1], B: [0, 0, -1] };
+    for (const f of "URFDLB") {
+      for (let w = 1; w <= Math.max(1, Math.floor(N / 2)); w++) {
+        const d = 1 - (2 * w) / N + 1e-6;
+        const base = w === 1 ? f : w === 2 ? f + "w" : w + f + "w";
+        moves[base] = { axis: faceAxis[f], d, angle: -Math.PI / 2 };
+      }
+      // whole-cube rotations x y z use the R, U, F axes
+    }
+    moves.x = { axis: [1, 0, 0], d: -2, angle: -Math.PI / 2 };
+    moves.y = { axis: [0, 1, 0], d: -2, angle: -Math.PI / 2 };
+    moves.z = { axis: [0, 0, 1], d: -2, angle: -Math.PI / 2 };
+    return { faces, cuts, moves, net: CUBE_NET, strokeWidth: 0.12 / N + 0.01 };
+  }
+
+  function pyraminx() {
+    const U = [0, 1, 0], B = [0, -1 / 3, -2 * Math.SQRT2 / 3], L = [-Math.sqrt(2 / 3), -1 / 3, Math.SQRT2 / 3], R = [Math.sqrt(2 / 3), -1 / 3, Math.SQRT2 / 3];
+    const tri = (a, b, c) => ({ n: norm(add(add(a, b), c)), poly: [a, b, c] });
+    // faces: F (U,L,R), L (U,B,L), R (U,R,B), D (L,B,R)
+    const faces = [tri(U, L, R), tri(U, B, L), tri(U, R, B), tri(L, B, R)];
+    const verts = { U, L, R, B };
+    const cuts = [], moves = {};
+    for (const k in verts) {
+      const v = norm(verts[k]);
+      cuts.push({ n: v, d: 5 / 9 }, { n: v, d: 1 / 9 });
+      moves[k] = { axis: v, d: 1 / 9 - 1e-6, angle: (-2 * Math.PI) / 3 };
+      moves[k.toLowerCase()] = { axis: v, d: 5 / 9 - 1e-6, angle: (-2 * Math.PI) / 3 };
+    }
+    return { faces, cuts, moves, net: [{ up: [0, 1, 0.35], tree: { face: 0, children: [{ face: 1 }, { face: 2 }, { face: 3 }] } }], strokeWidth: 0.04 };
+  }
+
+  function skewb() {
+    const faces = cubeFaces();
+    const corners = { R: [1, -1, -1], U: [-1, 1, -1], L: [-1, -1, 1], B: [-1, -1, -1] };
+    const cuts = [[1, 1, 1], [1, 1, -1], [1, -1, 1], [-1, 1, 1]].map(n => ({ n: norm(n), d: 0 }));
+    const moves = {};
+    for (const k in corners) moves[k] = { axis: norm(corners[k]), d: 1e-6, angle: (-2 * Math.PI) / 3 };
+    return { faces, cuts, moves, net: CUBE_NET, strokeWidth: 0.05 };
+  }
+
+  function megaminx() {
+    const phi = (1 + Math.sqrt(5)) / 2;
+    let normals = [];
+    for (const a of [phi, -phi]) for (const b of [1, -1]) normals.push([0, a, b], [a, b, 0], [b, 0, a]);
+    normals = normals.map(norm);
+    let verts = [];
+    for (const x of [1, -1]) for (const y of [1, -1]) for (const z of [1, -1]) verts.push([x, y, z]);
+    for (const a of [1 / phi, -1 / phi]) for (const b of [phi, -phi]) verts.push([0, a, b], [a, b, 0], [b, 0, a]);
+    // orient: normals[0] -> up (+y), a neighbor -> front
+    const up0 = normals[0];
+    let front0 = normals.find(n => Math.abs(dot(n, up0) - 1 / Math.sqrt(5)) < 1e-6);
+    front0 = norm(sub(front0, mul(up0, dot(front0, up0))));
+    const right0 = cross(up0, front0); // y × z = x
+    const toW = p => [dot(p, right0), dot(p, up0), dot(p, front0)];
+    normals = normals.map(toW); verts = verts.map(toW);
+    const inr = dot(normals[0], verts.reduce((best, v) => (dot(v, normals[0]) > dot(best, normals[0]) ? v : best)));
+    const faces = normals.map(n => {
+      const vs = verts.filter(v => Math.abs(dot(v, n) - inr) < 1e-6);
+      const c = centroid(vs);
+      const ref = norm(sub(vs[0], c)), ref2 = cross(n, ref);
+      vs.sort((a, b) => Math.atan2(dot(sub(a, c), ref2), dot(sub(a, c), ref)) - Math.atan2(dot(sub(b, c), ref2), dot(sub(b, c), ref)));
+      return { n, poly: vs };
+    });
+    // name faces
+    const find = pred => faces.findIndex(pred);
+    const iU = find(f => f.n[1] > 0.99), iD = find(f => f.n[1] < -0.99);
+    const upper = faces.map((f, i) => i).filter(i => Math.abs(faces[i].n[1] - 1 / Math.sqrt(5)) < 1e-6);
+    const lower = faces.map((f, i) => i).filter(i => Math.abs(faces[i].n[1] + 1 / Math.sqrt(5)) < 1e-6);
+    const angOf = i => Math.atan2(faces[i].n[0], faces[i].n[2]); // 0 = front, + = right
+    const byAng = arr => arr.slice().sort((a, b) => angOf(a) - angOf(b));
+    const up5 = byAng(upper); // angles: -144(BL) -72(L) 0(F) 72(R) 144(BR)
+    const lo5 = byAng(lower); // angles: -108 -36 36 108 180
+    const named = { U: iU, D: iD, BL: up5[0], L: up5[1], F: up5[2], R: up5[3], BR: up5[4] };
+    const ordered = [iU, named.F, named.R, named.BR, named.BL, named.L, iD, ...lo5];
+    const fs = ordered.map(i => faces[i]);
+    const d = inr * 0.62;
+    const cuts = fs.map(f => ({ n: f.n, d }));
+    const Ln = fs[5].n, Un = fs[0].n;
+    const moves = {
+      "R++": { axis: mul(Ln, -1), d: -d + 1e-6, angle: (-2 * 2 * Math.PI) / 5 },
+      "R--": { axis: mul(Ln, -1), d: -d + 1e-6, angle: (2 * 2 * Math.PI) / 5 },
+      "D++": { axis: mul(Un, -1), d: -d + 1e-6, angle: (-2 * 2 * Math.PI) / 5 },
+      "D--": { axis: mul(Un, -1), d: -d + 1e-6, angle: (2 * 2 * Math.PI) / 5 },
+      U: { axis: Un, d: d - 1e-6, angle: (-2 * Math.PI) / 5 },
+      "U'": { axis: Un, d: d - 1e-6, angle: (2 * Math.PI) / 5 },
+    };
+    // nets: U flower (up direction = back) and D flower
+    const lowerKids = [7, 8, 9, 10, 11].map(i => ({ face: i }));
+    const net = [
+      { up: [0, 0, -1], tree: { face: 0, children: [1, 2, 3, 4, 5].map(i => ({ face: i })) } },
+      { up: [0, 0, 1], tree: { face: 6, children: lowerKids } },
+    ];
+    return { faces: fs, cuts, moves, net, netGap: 0.3, strokeWidth: 0.03 };
+  }
+
+  const cache = {};
+  function get(kind) {
+    if (cache[kind]) return cache[kind];
+    let spec;
+    if (/^\d$/.test(kind)) spec = nxn(+kind);
+    else if (kind === "pyra") spec = pyraminx();
+    else if (kind === "skewb") spec = skewb();
+    else if (kind === "mega") spec = megaminx();
+    else throw new Error("unknown puzzle " + kind);
+    cache[kind] = build(spec);
+    return cache[kind];
+  }
+
+  // Move-string parsers per puzzle kind -> list of [moveName, times]
+  function parseNxN(str) {
+    const out = [];
+    for (const tok of str.trim().split(/\s+/)) {
+      if (!tok) continue;
+      const m = tok.match(/^(\d*)([URFDLBxyz])(w?)(2|'|2')?$/);
+      if (!m) throw new Error("bad move " + tok);
+      let name = m[2];
+      const layers = m[1] ? +m[1] : m[3] ? 2 : 1;
+      if ("xyz".includes(name)) name = m[2];
+      else if (layers === 2) name = m[2] + "w";
+      else if (layers > 2) name = layers + m[2] + "w";
+      const times = m[4] === "2" || m[4] === "2'" ? 2 : m[4] === "'" ? 3 : 1;
+      out.push([name, times]);
+    }
+    return out;
+  }
+  function parsePyra(str) {
+    return str.trim().split(/\s+/).filter(Boolean).map(t => [t[0], t.endsWith("'") ? 2 : 1]);
+  }
+  function parseSkewb(str) { return parsePyra(str); }
+  function parseMega(str) {
+    return str.trim().split(/\s+/).filter(Boolean).map(t => [t, 1]);
+  }
+
+  return { get, apply, svg, parseNxN, parsePyra, parseSkewb, parseMega, netLayout, _v: { dot, norm, rotate } };
+})();
+if (typeof module !== "undefined") module.exports = Geo;
+
+// Clock and Square-1 models, random-move scramblers, event table and preview drawing.
+const Puzzles = (function () {
+  "use strict";
+  const rnd = n => Math.floor(Math.random() * n);
+
+  // ---------- Clock ----------
+  // front/back: 9 dials each, row-major as seen from that side. Corners: 0,2,6,8.
+  const PIN_BLOCKS = { UL: [0, 1, 3, 4], UR: [1, 2, 4, 5], DL: [3, 4, 6, 7], DR: [4, 5, 7, 8] };
+  const PIN_SETS = {
+    UR: ["UR"], DR: ["DR"], DL: ["DL"], UL: ["UL"],
+    U: ["UL", "UR"], R: ["UR", "DR"], D: ["DL", "DR"], L: ["UL", "DL"], ALL: ["UL", "UR", "DL", "DR"],
+  };
+  const mirror = i => Math.floor(i / 3) * 3 + (2 - (i % 3));
+  function clockSolved() { return { sides: [new Array(9).fill(0), new Array(9).fill(0)], front: 0 }; }
+  function clockApply(st, str) {
+    const s = { sides: [st.sides[0].slice(), st.sides[1].slice()], front: st.front };
+    for (const tok of str.trim().split(/\s+/).filter(Boolean)) {
+      if (tok === "y2") { s.front ^= 1; continue; }
+      const m = tok.match(/^(UR|DR|DL|UL|U|R|D|L|ALL)(\d)([+-])$/);
+      if (!m) continue; // trailing pin lists are display-only
+      const x = (m[3] === "+" ? 1 : -1) * +m[2];
+      const cur = s.sides[s.front], other = s.sides[s.front ^ 1];
+      const dials = new Set();
+      for (const p of PIN_SETS[m[1]]) for (const d of PIN_BLOCKS[p]) dials.add(d);
+      for (const d of dials) {
+        cur[d] = (cur[d] + x + 1200) % 12;
+        if (d === 0 || d === 2 || d === 6 || d === 8) { const o = mirror(d); other[o] = (other[o] - x + 1200) % 12; }
+      }
+    }
+    return s;
+  }
+  function clockScramble() {
+    const amt = () => { const v = rnd(12) - 5; return Math.abs(v) + (v < 0 ? "-" : "+"); };
+    const front = ["UR", "DR", "DL", "UL", "U", "R", "D", "L", "ALL"].map(p => p + amt());
+    const back = ["U", "R", "D", "L", "ALL"].map(p => p + amt());
+    return front.join(" ") + " y2 " + back.join(" ");
+  }
+  function clockSvg(str, colors) {
+    const st = clockApply(clockSolved(), str);
+    const face = (vals, ox, bg, fg) => {
+      let s = `<rect x="${ox}" y="0" width="96" height="96" rx="22" fill="${bg}" stroke="var(--sticker-line,#111)" stroke-width="1.5"/>`;
+      vals.forEach((v, i) => {
+        const cx = ox + 18 + (i % 3) * 30, cy = 18 + Math.floor(i / 3) * 30;
+        const a = (v / 12) * 2 * Math.PI;
+        s += `<circle cx="${cx}" cy="${cy}" r="11" fill="${fg}" stroke="var(--sticker-line,#111)" stroke-width="1"/>`;
+        s += `<line x1="${cx}" y1="${cy}" x2="${(cx + 9 * Math.sin(a)).toFixed(2)}" y2="${(cy - 9 * Math.cos(a)).toFixed(2)}" stroke="${colors[2]}" stroke-width="2.4" stroke-linecap="round"/>`;
+        s += `<circle cx="${(cx).toFixed(2)}" cy="${(cy - 12.6).toFixed(2)}" r="1.1" fill="${colors[2]}"/>`;
+      });
+      return s;
+    };
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 212 104" role="img" aria-label="Clock scramble preview">${face(st.sides[0], 0, colors[0], colors[3])}${face(st.sides[1], 108, colors[1], colors[4])}</svg>`;
+  }
+
+  // ---------- Square-1 ----------
+  // Layers indexed clockwise as seen from the top; slot k spans [30k, 30k+30) degrees from the cut.
+  // Each slot holds pieceId*2 + part (corners fill two slots: part 0 then part 1 in their home layer).
+  function sq1Solved() {
+    const layer = base => { const a = []; for (let k = 0; k < 4; k++) a.push((base + k) * 2, (base + k) * 2 + 1, (base + 4 + k) * 2); return a; };
+    return { top: layer(0), bot: layer(8), mid: 0 };
+  }
+  const isCorner = id => id % 8 < 4;
+  const pid = v => v >> 1;
+  function sq1Twist(s, x, y) {
+    const t = new Array(12), b = new Array(12);
+    for (let k = 0; k < 12; k++) { t[((k + x) % 12 + 12) % 12] = s.top[k]; b[((k - y) % 12 + 12) % 12] = s.bot[k]; }
+    return { top: t, bot: b, mid: s.mid };
+  }
+  function sq1CanSlash(s) {
+    return pid(s.top[11]) !== pid(s.top[0]) && pid(s.top[5]) !== pid(s.top[6]) && pid(s.bot[11]) !== pid(s.bot[0]) && pid(s.bot[5]) !== pid(s.bot[6]);
+  }
+  function sq1Slash(s) {
+    const t = s.top.slice(), b = s.bot.slice();
+    for (let k = 0; k < 6; k++) { t[k] = s.bot[5 - k]; b[5 - k] = s.top[k]; }
+    return { top: t, bot: b, mid: s.mid ^ 1 };
+  }
+  function sq1Apply(s, str) {
+    const re = /\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)|\//g; let m;
+    while ((m = re.exec(str))) {
+      if (m[0] === "/") { if (!sq1CanSlash(s)) throw new Error("illegal slash"); s = sq1Slash(s); }
+      else s = sq1Twist(s, +m[1], +m[2]);
+    }
+    return s;
+  }
+  function sq1Scramble(n) {
+    let s = sq1Solved(); const parts = [];
+    n = n || 12;
+    while (parts.length < n) {
+      const opts = [];
+      for (let x = -5; x <= 6; x++) for (let y = -5; y <= 6; y++) {
+        if (x === 0 && y === 0 && parts.length > 0) continue;
+        if (sq1CanSlash(sq1Twist(s, x, y))) opts.push([x, y]);
+      }
+      const [x, y] = opts[rnd(opts.length)];
+      s = sq1Slash(sq1Twist(s, x, y));
+      parts.push(`(${x},${y})`);
+    }
+    return parts.join("/ ") + "/";
+  }
+  function sq1Svg(str, colors) {
+    let s; try { s = sq1Apply(sq1Solved(), str); } catch (e) { s = sq1Solved(); }
+    // Side j is the cube face centred on edge j (j = 0..3); corner k spans sides k-1 and k.
+    const sideCol = j => colors[2 + (((j % 4) + 4) % 4)];
+    const sideOf = v => { const id = pid(v), k = id % 4; return isCorner(id) ? sideCol(v & 1 ? k : k - 1) : sideCol(k); };
+    const faceColor = v => (pid(v) < 8 ? colors[0] : colors[1]);
+    const R1 = 1 / Math.cos(Math.PI / 12), R2 = Math.SQRT2, OUT = 1.17;
+    const fmt = pts => pts.map(p => p[0].toFixed(3) + "," + p[1].toFixed(3)).join(" ");
+    const line = 'stroke="var(--sticker-line,#111)" stroke-width="0.035" stroke-linejoin="round"';
+    function layerSvg(slots, ox, mirrored) {
+      const P = (r, deg) => { const a = ((mirrored ? -(deg + 15) : deg + 15) * Math.PI) / 180; return [ox + r * Math.sin(a), -r * Math.cos(a)]; };
+      let out = "";
+      for (let k = 0; k < 12; k++) {
+        const v = slots[k], id = pid(v), a = 30 * k;
+        if (isCorner(id)) {
+          if (pid(slots[(k + 1) % 12]) !== id) continue; // draw each corner from its first slot
+          const v2 = slots[(k + 1) % 12];
+          out += `<polygon points="${fmt([P(0, 0), P(R1, a), P(R2, a + 30), P(R1, a + 60)])}" fill="${faceColor(v)}" ${line}/>`;
+          out += `<polygon points="${fmt([P(R1, a), P(R2, a + 30), P(R2 * OUT, a + 30), P(R1 * OUT, a)])}" fill="${sideOf(v)}" ${line}/>`;
+          out += `<polygon points="${fmt([P(R2, a + 30), P(R1, a + 60), P(R1 * OUT, a + 60), P(R2 * OUT, a + 30)])}" fill="${sideOf(v2)}" ${line}/>`;
+        } else {
+          out += `<polygon points="${fmt([P(0, 0), P(R1, a), P(R1, a + 30)])}" fill="${faceColor(v)}" ${line}/>`;
+          out += `<polygon points="${fmt([P(R1, a), P(R1, a + 30), P(R1 * OUT, a + 30), P(R1 * OUT, a)])}" fill="${sideOf(v)}" ${line}/>`;
+        }
+      }
+      // the slice cut line
+      out += `<line x1="${fmt([P(R2 * OUT + 0.08, 0)]).split(",")[0]}" y1="${fmt([P(R2 * OUT + 0.08, 0)]).split(",")[1]}" x2="${fmt([P(R2 * OUT + 0.08, 180)]).split(",")[0]}" y2="${fmt([P(R2 * OUT + 0.08, 180)]).split(",")[1]}" stroke="var(--sticker-line,#111)" stroke-width="0.04" stroke-dasharray="0.08 0.08" opacity="0.6"/>`;
+      return out;
+    }
+    const W = 2 * (R2 * OUT + 0.1);
+    const gap = W + 0.25;
+    const y = W / 2 + 0.18, h = 0.3;
+    const mid = `<rect x="${(-W / 2).toFixed(3)}" y="${y.toFixed(3)}" width="${(W / 2).toFixed(3)}" height="${h}" fill="${colors[2]}" ${line}/>` +
+      `<rect x="0" y="${y.toFixed(3)}" width="${(W / 2).toFixed(3)}" height="${h}" fill="${s.mid ? colors[4] : colors[2]}" ${line}/>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(-W / 2 - 0.05).toFixed(3)} ${(-W / 2 - 0.05).toFixed(3)} ${(W + gap + 0.1).toFixed(3)} ${(W + h + 0.35).toFixed(3)}" role="img" aria-label="Square-1 scramble preview">${layerSvg(s.top, 0, false)}${layerSvg(s.bot, gap, true)}${mid}</svg>`;
+  }
+
+  // ---------- random-move scramblers ----------
+  function nxnScramble(n, len) {
+    const faces = "URFDLB";
+    const maxW = Math.floor(n / 2);
+    const axisOf = f => "UD RL FB".split(" ").findIndex(p => p.includes(f));
+    const out = []; let lastAxis = -1; let used = new Set();
+    while (out.length < len) {
+      const f = faces[rnd(6)];
+      let w = 1;
+      if (n >= 4) { w = 1 + rnd(maxW); if (n % 2 === 0 && w === maxW && "LDB".includes(f)) continue; }
+      const ax = axisOf(f);
+      const id = f + w;
+      if (ax === lastAxis) { if (used.has(id)) continue; } else used = new Set();
+      used.add(id); lastAxis = ax;
+      const base = w === 1 ? f : w === 2 ? f + "w" : w + f + "w";
+      out.push(base + ["", "'", "2"][rnd(3)]);
+    }
+    return out.join(" ");
+  }
+  function pyraScramble(solver) {
+    // random-move: 11 moves without repeats, then random tips
+    const out = []; let last = "";
+    while (out.length < 11) { const f = "ULRB"[rnd(4)]; if (f === last) continue; last = f; out.push(f + (rnd(2) ? "'" : "")); }
+    for (const t of "ulrb") { const r = rnd(3); if (r) out.push(t + (r === 2 ? "'" : "")); }
+    return out.join(" ");
+  }
+  function skewbScramble() {
+    const out = []; let last = "";
+    while (out.length < 11) { const f = "RULB"[rnd(4)]; if (f === last) continue; last = f; out.push(f + (rnd(2) ? "'" : "")); }
+    return out.join(" ");
+  }
+  function megaScramble() {
+    const lines = [];
+    for (let l = 0; l < 7; l++) {
+      const mv = [];
+      for (let i = 0; i < 10; i++) mv.push((i % 2 ? "D" : "R") + (rnd(2) ? "++" : "--"));
+      mv.push(rnd(2) ? "U" : "U'");
+      lines.push(mv.join(" "));
+    }
+    return lines.join("\n");
+  }
+
+  // ---------- events ----------
+  const EVENTS = [
+    { id: "333", name: "3x3x3", puzzle: "3", rs: "333" },
+    { id: "222", name: "2x2x2", puzzle: "2", rs: "222" },
+    { id: "444", name: "4x4x4", puzzle: "4", len: 40 },
+    { id: "555", name: "5x5x5", puzzle: "5", len: 60 },
+    { id: "666", name: "6x6x6", puzzle: "6", len: 80 },
+    { id: "777", name: "7x7x7", puzzle: "7", len: 100 },
+    { id: "333oh", name: "3x3x3 One-Handed", puzzle: "3", rs: "333" },
+    { id: "333bf", name: "3x3x3 Blindfolded", puzzle: "3", rs: "333" },
+    { id: "333fm", name: "3x3x3 Fewest Moves", puzzle: "3", rs: "333" },
+    { id: "pyram", name: "Pyraminx", puzzle: "pyra" },
+    { id: "skewb", name: "Skewb", puzzle: "skewb" },
+    { id: "minx", name: "Megaminx", puzzle: "mega" },
+    { id: "clock", name: "Clock", puzzle: "clock" },
+    { id: "sq1", name: "Square-1", puzzle: "sq1" },
+  ];
+  const eventById = id => EVENTS.find(e => e.id === id) || EVENTS[0];
+
+  // Generate a scramble synchronously for non-random-state events.
+  function randomMove(ev) {
+    switch (ev.puzzle) {
+      case "pyra": return pyraScramble();
+      case "skewb": return skewbScramble();
+      case "mega": return megaScramble();
+      case "clock": return clockScramble();
+      case "sq1": return sq1Scramble();
+      default: return nxnScramble(+ev.puzzle, ev.len || 25);
+    }
+  }
+
+  const COLORS = {
+    cube: ["#ffffff", "#e8332a", "#1aa34a", "#ffd60a", "#ff8a1f", "#2a63e8"], // U R F D L B
+    pyra: ["#1aa34a", "#e8332a", "#2a63e8", "#ffd60a"], // F L R D
+    mega: ["#ffffff", "#178a3c", "#e8332a", "#1d3fb8", "#ffd60a", "#8a3fc2", "#9a9a9a", "#ff9ec9", "#8fe388", "#ff8a1f", "#8fd3ff", "#f4e6b0"],
+    clock: ["#2a63e8", "#d8e6ff", "#e8332a", "#d8e6ff", "#2a63e8"],
+    sq1: ["#ffffff", "#ffd60a", "#e8332a", "#1aa34a", "#ff8a1f", "#2a63e8"],
+  };
+
+  function previewSvg(evId, scramble, Geo) {
+    const ev = eventById(evId);
+    try {
+      if (ev.puzzle === "clock") return clockSvg(scramble, COLORS.clock);
+      if (ev.puzzle === "sq1") return sq1Svg(scramble, COLORS.sq1);
+      const p = Geo.get(ev.puzzle);
+      let st = p.solvedState();
+      const parse = ev.puzzle === "pyra" ? Geo.parsePyra : ev.puzzle === "skewb" ? Geo.parseSkewb : ev.puzzle === "mega" ? Geo.parseMega : Geo.parseNxN;
+      for (const [n, t] of parse(scramble)) st = Geo.apply(p, st, n, t);
+      const cols = ev.puzzle === "pyra" ? COLORS.pyra : ev.puzzle === "mega" ? COLORS.mega : COLORS.cube;
+      return Geo.svg(p, st, cols, { label: ev.name + " scramble preview" });
+    } catch (e) {
+      return "";
+    }
+  }
+
+  return { EVENTS, eventById, randomMove, previewSvg, clockApply, clockSolved, clockScramble, sq1Apply, sq1Solved, sq1Scramble, sq1CanSlash, sq1Twist, sq1Slash, nxnScramble, COLORS };
+})();
+if (typeof module !== "undefined") module.exports = Puzzles;
+
+// Averages (WCA rules), formatting, time-entry parsing and cstimer import.
+const Stats = (function () {
+  "use strict";
+  const DNF = Infinity;
+  // A solve: { t: raw ms, p: 0 | 2000 | -1 (DNF), s: scramble, c: comment, d: timestamp ms }
+  const val = sv => (sv.p === -1 ? DNF : sv.t + (sv.p > 0 ? sv.p : 0));
+
+  // Number of times dropped from each end for an average of n (mean-of-3 drops none).
+  const trimOf = n => (n <= 3 ? 0 : Math.ceil(n * 0.05));
+
+  // Average of a window of values. Returns ms (rounded) or DNF.
+  function avgValues(vals, isMean) {
+    const n = vals.length;
+    if (isMean) return vals.some(v => v === DNF) ? DNF : Math.round(vals.reduce((a, b) => a + b, 0) / n);
+    const k = trimOf(n);
+    const dnfs = vals.filter(v => v === DNF).length;
+    if (dnfs > k) return DNF;
+    const sorted = vals.slice().sort((a, b) => a - b);
+    const mid = sorted.slice(k, n - k);
+    return Math.round(mid.reduce((a, b) => a + b, 0) / mid.length);
+  }
+
+  // Indexes (within the window) that were trimmed, for display in parentheses.
+  function trimmedIdx(vals) {
+    const n = vals.length, k = trimOf(n);
+    const order = vals.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const out = new Set();
+    for (let i = 0; i < k; i++) { out.add(order[i][1]); out.add(order[n - 1 - i][1]); }
+    return out;
+  }
+
+  // Rolling averages: returns array aligned with solves (null until enough solves).
+  function rolling(solves, n, isMean) {
+    const vals = solves.map(val), out = new Array(vals.length).fill(null);
+    for (let i = n - 1; i < vals.length; i++) out[i] = avgValues(vals.slice(i - n + 1, i + 1), isMean);
+    return out;
+  }
+
+  const KINDS = [
+    { key: "mo3", n: 3, mean: true, label: "mo3" },
+    { key: "ao5", n: 5, label: "ao5" },
+    { key: "ao12", n: 12, label: "ao12" },
+    { key: "ao50", n: 50, label: "ao50" },
+    { key: "ao100", n: 100, label: "ao100" },
+  ];
+
+  // Summary for a session: current and best for single and each average.
+  function summary(solves) {
+    const vals = solves.map(val);
+    const res = { count: solves.length, solved: vals.filter(v => v !== DNF).length, rows: [] };
+    const finite = vals.filter(v => v !== DNF);
+    res.mean = finite.length ? Math.round(finite.reduce((a, b) => a + b, 0) / finite.length) : null;
+    if (finite.length > 1) {
+      const m = finite.reduce((a, b) => a + b, 0) / finite.length;
+      res.sd = Math.round(Math.sqrt(finite.reduce((a, b) => a + (b - m) * (b - m), 0) / (finite.length - 1)));
+    } else res.sd = null;
+    // single
+    let bestI = -1;
+    vals.forEach((v, i) => { if (bestI < 0 || v < vals[bestI]) bestI = i; });
+    res.rows.push({ key: "single", label: "single", n: 1, cur: vals.length ? vals[vals.length - 1] : null, best: bestI >= 0 ? vals[bestI] : null, curEnd: vals.length - 1, bestEnd: bestI });
+    for (const k of KINDS) {
+      if (vals.length < k.n) { res.rows.push({ key: k.key, label: k.label, n: k.n, cur: null, best: null }); continue; }
+      const r = rolling(solves, k.n, k.mean);
+      let bi = -1;
+      for (let i = k.n - 1; i < r.length; i++) if (bi < 0 || r[i] < r[bi]) bi = i;
+      res.rows.push({ key: k.key, label: k.label, n: k.n, mean: !!k.mean, cur: r[r.length - 1], best: r[bi], curEnd: r.length - 1, bestEnd: bi });
+    }
+    return res;
+  }
+
+  // Bests across a set of solves, for the leaderboard.
+  function bests(solves) {
+    const s = summary(solves);
+    const get = key => { const r = s.rows.find(x => x.key === key); return r && r.best !== null && r.best !== DNF ? r.best : null; };
+    return { single: get("single"), ao5: get("ao5"), ao12: get("ao12"), mean: s.mean, count: s.count };
+  }
+
+  function fmt(ms, decimals, isAvg) {
+    if (ms === null || ms === undefined) return "–";
+    if (ms === DNF) return "DNF";
+    decimals = decimals === 3 ? 3 : 2;
+    // singles are truncated like a stackmat; averages are rounded
+    const unit = decimals === 3 ? 1 : 10;
+    let v = isAvg ? Math.round(ms / unit) : Math.floor(ms / unit);
+    const sub = v % (decimals === 3 ? 1000 : 100);
+    let sec = Math.floor(v / (decimals === 3 ? 1000 : 100));
+    const min = Math.floor(sec / 60); sec %= 60;
+    const frac = String(sub).padStart(decimals, "0");
+    if (min > 0) return `${min}:${String(sec).padStart(2, "0")}.${frac}`;
+    return `${sec}.${frac}`;
+  }
+  function fmtSolve(sv, decimals) {
+    if (sv.p === -1) return "DNF";
+    const t = fmt(sv.t + (sv.p > 0 ? sv.p : 0), decimals);
+    return sv.p > 0 ? t + "+" : t;
+  }
+
+  // Typed entry: "12.34", "1:02.5", "1234" (= 12.34), "12.34+" (+2), "DNF", "DNF(12.34)"
+  function parseTyped(str) {
+    str = String(str || "").trim().toLowerCase().replace(/\s+/g, "");
+    if (!str) return null;
+    let p = 0;
+    let m = str.match(/^dnf(?:\((.*)\))?$/);
+    if (m) { const inner = m[1] ? parseTyped(m[1]) : null; return { t: inner ? inner.t : 0, p: -1 }; }
+    if (str.endsWith("+2")) { p = 2000; str = str.slice(0, -2); }
+    else if (str.endsWith("+")) { p = 2000; str = str.slice(0, -1); }
+    let ms;
+    if (/^\d+$/.test(str)) {
+      // digits only: last two are hundredths, like a stackmat display (1234 -> 12.34, 10345 -> 1:03.45)
+      const n = str.padStart(3, "0");
+      const cs = +n.slice(-2), rest = n.slice(0, -2);
+      const sec = +rest.slice(-2), min = rest.length > 2 ? +rest.slice(0, -2) : 0;
+      if (sec >= 60 && min > 0) return null;
+      ms = (min * 60 + sec) * 1000 + cs * 10;
+    } else {
+      m = str.match(/^(?:(\d+):)?(\d+(?:\.\d+)?)$/);
+      if (!m) return null;
+      const min = m[1] ? +m[1] : 0, sec = parseFloat(m[2]);
+      if (m[1] && sec >= 60) return null;
+      ms = Math.round((min * 60 + sec) * 1000);
+    }
+    if (!(ms > 0)) return null;
+    return { t: ms, p };
+  }
+
+  // cstimer export -> [{name, event, solves}]
+  const CS_EVENTS = {
+    "333": "333", "222so": "222", "222": "222", "2223": "222", "444wca": "444", "444": "444", "444m": "444",
+    "555wca": "555", "555": "555", "666wca": "666", "666": "666", "777wca": "777", "777": "777",
+    "pyrso": "pyram", "pyrm": "pyram", "pyram": "pyram", "skbso": "skewb", "skb": "skewb",
+    "mgmp": "minx", "minx": "minx", "clkwca": "clock", "clk": "clock", "sqrs": "sq1", "sq1h": "sq1", "sq1t": "sq1",
+    "333oh": "333oh", "333ni": "333bf", "333bf": "333bf", "333fm": "333fm", "444bld": "444", "555bld": "555",
+  };
+  function importCstimer(obj) {
+    if (typeof obj === "string") obj = JSON.parse(obj);
+    let meta = {};
+    try {
+      const sd = obj.properties && obj.properties.sessionData;
+      meta = typeof sd === "string" ? JSON.parse(sd) : sd || {};
+    } catch (e) { meta = {}; }
+    const keys = Object.keys(obj).filter(k => /^session\d+$/.test(k)).sort((a, b) => +a.slice(7) - +b.slice(7));
+    const out = [];
+    for (const k of keys) {
+      const id = k.slice(7);
+      let arr = obj[k];
+      if (typeof arr === "string") { try { arr = JSON.parse(arr); } catch (e) { arr = []; } }
+      if (!Array.isArray(arr)) continue;
+      const m = meta[id] || {};
+      const scr = (m.opt && m.opt.scrType) || "333";
+      const solves = [];
+      for (const row of arr) {
+        if (!Array.isArray(row) || !Array.isArray(row[0])) continue;
+        const pen = row[0][0], t = row[0][1];
+        if (typeof t !== "number") continue;
+        solves.push({ t: Math.round(t), p: pen === -1 ? -1 : pen > 0 ? 2000 : 0, s: String(row[1] || ""), c: String(row[2] || ""), d: typeof row[3] === "number" ? row[3] * 1000 : Date.now() });
+      }
+      out.push({ name: String(m.name || "Session " + id), event: CS_EVENTS[scr] || "333", solves });
+    }
+    return out;
+  }
+  function isCstimer(obj) { return obj && typeof obj === "object" && Object.keys(obj).some(k => /^session\d+$/.test(k)); }
+
+  return { DNF, val, avgValues, trimmedIdx, rolling, summary, bests, fmt, fmtSolve, parseTyped, importCstimer, isCstimer, KINDS, trimOf };
+})();
+if (typeof module !== "undefined") module.exports = Stats;
+
+// ================= Speedcube Timer app =================
+(function () {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-5);
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const root = document.documentElement;
+  const S = Stats, P = Puzzles;
+  const DNF = S.DNF;
+  // The home-screen build sets this flag; it has no claude.ai account features.
+  const STANDALONE = !!window.__SPEEDCUBE_STANDALONE;
+
+  const DEFAULTS = {
+    theme: "auto", accent: "", timerFont: "martian", timerSize: 1, scrambleSize: 1, preview: true, previewSize: 1,
+    focusMode: true, decimals: 2, running: "full", cue: "colorbar", quickSize: 1, inspection: false, alerts: "voice", holdMs: 300, entry: "timer", shareBoard: false,
+  };
+  const ACCENTS = ["#c94a17", "#d6336c", "#7b4ee0", "#2468d8", "#0f8f84", "#4a8a1c"];
+
+  // ---------------- data ----------------
+  let data = null;
+  function newSession(event, name) {
+    const ev = P.eventById(event);
+    return { id: uid(), name: name || ev.name, event: ev.id, created: Date.now(), chunks: 0 };
+  }
+  function normalize(d) {
+    d = d && typeof d === "object" ? d : {};
+    const out = { settings: Object.assign({}, DEFAULTS, d.settings || {}), sessions: Array.isArray(d.sessions) ? d.sessions.filter(s => s && s.id) : [], solves: {}, current: d.current };
+    for (const s of out.sessions) { s.event = P.eventById(s.event).id; s.name = String(s.name || P.eventById(s.event).name); out.solves[s.id] = Array.isArray(d.solves && d.solves[s.id]) ? d.solves[s.id] : []; }
+    if (!out.sessions.length) { const s = newSession("333"); out.sessions.push(s); out.solves[s.id] = []; }
+    if (!out.sessions.some(s => s.id === out.current)) out.current = out.sessions[0].id;
+    return out;
+  }
+  const cur = () => data.sessions.find(s => s.id === data.current);
+  const curSolves = () => data.solves[data.current];
+  const settings = () => data.settings;
+
+  // ---------------- persistence ----------------
+  const LOCAL_KEY = "speedcube-timer.v1";
+  const Local = {
+    load() { try { const r = localStorage.getItem(LOCAL_KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } },
+    save(d) { try { localStorage.setItem(LOCAL_KEY, JSON.stringify({ settings: d.settings, sessions: d.sessions, solves: d.solves, current: d.current })); return true; } catch (e) { return false; } },
+  };
+  let mode = "local"; // "local" | "cloud"
+  let cloud = null; // { db, user, uid, me }
+  let localBackup = null; // device data seen at startup while in cloud mode
+  let localTimer = null;
+  const CHUNK = 200;
+  const dirty = { profile: false, chunks: {}, dropped: [] };
+  let flushTimer = null, flushing = false, flushAgain = false;
+
+  function setSync(state, text) {
+    const dot = $("#syncDot");
+    dot.dataset.s = state;
+    $("#accountChip").title = text || (state === "saved" ? "Saved to your claude.ai account" : state === "saving" ? "Saving…" : state === "error" ? "Not saved, see Settings" : "Saved in this browser");
+  }
+  function changedSolves(sid, fromIndex) {
+    if (mode === "cloud") { dirty.chunks[sid] = Math.min(dirty.chunks[sid] ?? Infinity, Math.max(0, fromIndex)); scheduleFlush(); }
+    else scheduleLocal();
+    scheduleBoard();
+  }
+  function changedProfile() {
+    if (mode === "cloud") { dirty.profile = true; scheduleFlush(); }
+    else scheduleLocal();
+  }
+  function scheduleLocal() {
+    clearTimeout(localTimer);
+    localTimer = setTimeout(() => { const ok = Local.save(data); setSync(ok ? "local" : "error", ok ? "Saved in this browser" : "This browser blocked saving. Export your data from Settings to keep it."); }, 250);
+  }
+  function scheduleFlush() { clearTimeout(flushTimer); setSync("saving"); flushTimer = setTimeout(flush, 600); }
+  const profRef = () => cloud.db.doc(`data/users/${cloud.uid}/profile`);
+  const chunkRef = (sid, i) => profRef().collection("chunks").doc(`${sid}~${i}`);
+  async function retry(fn) {
+    try { return await fn(); }
+    catch (e) {
+      if (e && (e.code === "unavailable" || e.code === "resource_exhausted")) { await new Promise(r => setTimeout(r, 400 + Math.random() * 600)); return fn(); }
+      throw e;
+    }
+  }
+  function profileBody() {
+    return { v: 1, settings: data.settings, current: data.current, updated: Date.now(),
+      sessions: data.sessions.map(s => ({ id: s.id, name: s.name, event: s.event, created: s.created, chunks: s.chunks || 0 })) };
+  }
+  async function flush() {
+    if (mode !== "cloud") return;
+    if (flushing) { flushAgain = true; return; }
+    flushing = true;
+    const chunks = dirty.chunks, dropped = dirty.dropped.splice(0);
+    let prof = dirty.profile;
+    dirty.chunks = {}; dirty.profile = false;
+    try {
+      for (const sid in chunks) {
+        const meta = data.sessions.find(s => s.id === sid); if (!meta) continue;
+        const list = data.solves[sid] || [];
+        const n = Math.ceil(list.length / CHUNK), old = meta.chunks || 0;
+        for (let i = Math.floor(chunks[sid] / CHUNK); i < n; i++) {
+          const part = list.slice(i * CHUNK, (i + 1) * CHUNK);
+          await retry(() => chunkRef(sid, i).set({ sid, i, solves: part }));
+        }
+        for (let i = n; i < old; i++) await retry(() => chunkRef(sid, i).delete());
+        if (old !== n) { meta.chunks = n; prof = true; }
+      }
+      for (const d of dropped) for (let i = 0; i < d.chunks; i++) await retry(() => chunkRef(d.sid, i).delete());
+      if (prof) await retry(() => profRef().set(profileBody()));
+      setSync("saved");
+    } catch (e) {
+      // put the work back so nothing is lost
+      for (const sid in chunks) dirty.chunks[sid] = Math.min(dirty.chunks[sid] ?? Infinity, chunks[sid]);
+      dirty.dropped.push(...dropped); if (prof) dirty.profile = true;
+      handleCloudError(e);
+    } finally {
+      flushing = false;
+      if (mode === "cloud" && (flushAgain || dirty.profile || Object.keys(dirty.chunks).length)) { flushAgain = false; if (!cloudBroken) scheduleFlush(); }
+    }
+  }
+  let cloudBroken = false;
+  function handleCloudError(e) {
+    const code = e && e.code;
+    if (code === "invalid_argument" || code === "not_granted" || code === "revoked" || code === "capability_disabled" || code === "capability_removed") {
+      // This viewer cannot write here: keep working on this device.
+      cloudBroken = true; mode = "local"; Local.save(data);
+      setSync("local", "Saved in this browser. Your access to this page doesn't allow saving to your account.");
+      $("#accountName").textContent = "This device";
+      toast("Your access to this page can't save to your account, so solves are kept in this browser.");
+    } else if (code === "quota_exceeded") {
+      setSync("error", "Storage for this page is full. Export your data and delete old sessions.");
+      toast("Storage for this page is full. Export your data, then delete old sessions.");
+    } else {
+      setSync("error", "Couldn't reach your account. Retrying soon.");
+      clearTimeout(flushTimer); flushTimer = setTimeout(flush, 8000);
+    }
+  }
+  async function loadCloud() {
+    const snap = await retry(() => profRef().get());
+    if (!snap.exists) return null;
+    const b = clone(snap.data());
+    const d = { settings: b.settings, sessions: b.sessions || [], current: b.current, solves: {} };
+    const jobs = [];
+    for (const s of d.sessions) { d.solves[s.id] = []; for (let i = 0; i < (s.chunks || 0); i++) jobs.push([s.id, i]); }
+    const parts = {};
+    let k = 0;
+    async function worker() {
+      while (k < jobs.length) {
+        const [sid, i] = jobs[k++];
+        const c = await retry(() => chunkRef(sid, i).get());
+        (parts[sid] = parts[sid] || [])[i] = c.exists ? clone(c.data().solves || []) : [];
+      }
+    }
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    for (const sid in parts) d.solves[sid] = parts[sid].flat();
+    return d;
+  }
+  function markAllDirty() {
+    dirty.profile = true;
+    for (const s of data.sessions) if ((data.solves[s.id] || []).length) dirty.chunks[s.id] = 0;
+    scheduleFlush();
+  }
+
+  // ---------------- scrambles ----------------
+  let worker = null, wseq = 0;
+  const pending = new Map();
+  let mainSolver = null;
+  function mainThread(ev) { mainSolver = mainSolver || CubeSolverModule(); return ev === "222" ? mainSolver.scramble222() : mainSolver.scramble333(); }
+  function getWorker() {
+    if (worker !== null) return worker;
+    try {
+      const src = `const M=(${CubeSolverModule.toString()})();onmessage=e=>{const d=e.data;try{postMessage({id:d.id,s:d.ev==="222"?M.scramble222():M.scramble333()})}catch(err){postMessage({id:d.id,err:String(err)})}};`;
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+      worker.onmessage = e => { const p = pending.get(e.data.id); if (!p) return; pending.delete(e.data.id); clearTimeout(p.timer); e.data.err ? p.fallback() : p.resolve(e.data.s); };
+      worker.onerror = () => { worker = false; for (const [, p] of pending) { clearTimeout(p.timer); p.fallback(); } pending.clear(); };
+    } catch (e) { worker = false; }
+    return worker;
+  }
+  function randomState(ev) {
+    return new Promise(resolve => {
+      const fallback = () => setTimeout(() => resolve(mainThread(ev)), 20);
+      const w = getWorker();
+      if (!w) return fallback();
+      const id = ++wseq;
+      const timer = setTimeout(() => { if (pending.delete(id)) { worker = false; fallback(); } }, 20000);
+      pending.set(id, { resolve, fallback, timer });
+      w.postMessage({ id, ev });
+    });
+  }
+  const prefetch = {};
+  function makeScramble(evId) {
+    const ev = P.eventById(evId);
+    if (ev.rs) return randomState(ev.rs);
+    return Promise.resolve(P.randomMove(ev));
+  }
+  function takeScramble(evId) {
+    const q = (prefetch[evId] = prefetch[evId] || []);
+    const p = q.length ? q.shift() : makeScramble(evId);
+    while (q.length < 1) q.push(makeScramble(evId));
+    return p;
+  }
+  // per-session history: { list: [...], pos }
+  const hist = {};
+  let scrambleToken = 0;
+  function H() { const s = cur(); return (hist[s.id] = hist[s.id] || { list: [], pos: -1, event: s.event }); }
+  function currentScramble() { const h = H(); return h.pos >= 0 ? h.list[h.pos] : null; }
+  async function nextScramble() {
+    const h = H(), s = cur();
+    if (h.event !== s.event) { h.list = []; h.pos = -1; h.event = s.event; }
+    if (h.pos < h.list.length - 1) { h.pos++; renderScramble(); return; }
+    const token = ++scrambleToken;
+    renderScramble(true);
+    const scr = await takeScramble(s.event);
+    if (token !== scrambleToken || cur() !== s) return;
+    h.list.push(scr); h.pos = h.list.length - 1;
+    if (h.list.length > 50) { h.list.shift(); h.pos--; }
+    renderScramble();
+  }
+  function prevScramble() { const h = H(); if (h.pos > 0) { h.pos--; renderScramble(); } }
+
+  // ---------------- timer ----------------
+  const T = { state: "idle", start: 0, inspStart: 0, inspecting: false, holdTimer: null, raf: 0, ignoreRelease: false, alerted: {}, last: null };
+  let audio = null;
+  function beep(freq) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = freq; o.connect(g); g.connect(audio.destination);
+      g.gain.setValueAtTime(0.0001, audio.currentTime); g.gain.exponentialRampToValueAtTime(0.25, audio.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.18);
+      o.start(); o.stop(audio.currentTime + 0.2);
+    } catch (e) { /* sound unavailable */ }
+  }
+  function alertAt(sec) {
+    const a = settings().alerts;
+    if (a === "off") return;
+    if (a === "voice" && window.speechSynthesis && window.SpeechSynthesisUtterance) {
+      try { const u = new SpeechSynthesisUtterance(sec === 8 ? "Eight seconds" : "Twelve seconds"); u.rate = 1.15; speechSynthesis.cancel(); speechSynthesis.speak(u); return; } catch (e) { /* fall through */ }
+    }
+    beep(sec === 8 ? 660 : 880);
+    if (sec === 12) setTimeout(() => beep(880), 220);
+  }
+  let wakeLock = null, wantWake = false;
+  async function keepAwake(on) {
+    wantWake = on;
+    try {
+      if (on && !wakeLock && navigator.wakeLock && document.visibilityState === "visible") {
+        const lock = await navigator.wakeLock.request("screen");
+        if (!wantWake) { lock.release().catch(() => {}); return; }
+        wakeLock = lock; lock.addEventListener("release", () => { if (wakeLock === lock) wakeLock = null; });
+      } else if (!on && wakeLock) { const lock = wakeLock; wakeLock = null; await lock.release(); }
+    } catch (e) { wakeLock = null; /* the browser said no; timing still works */ }
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && wantWake) keepAwake(true); });
+  function unlockAudio() { if (settings().alerts === "beep" && !audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; } } }
+
+  function setTimerState(st) {
+    T.state = st;
+    const t = $("#timer");
+    t.dataset.state = st === "holding" || st === "ready" ? st : T.inspecting ? "inspecting" : st;
+    $("#clock").dataset.state = st;
+    $("#tcap").textContent = T.inspecting ? "Inspection" : "";
+    const focus = settings().focusMode && (st === "running" || st === "ready" || T.inspecting);
+    if (focus && !document.body.classList.contains("focus")) {
+      // When the sidebar sits beside the stage, shift the clock left by half its width so it lands mid-screen.
+      const side = $("#side").getBoundingClientRect(), main = $("#main").getBoundingClientRect();
+      const beside = side.width > 0 && side.right <= main.left + 1;
+      $("#stage").style.setProperty("--shift", beside ? `${-side.width / 2}px` : "0px");
+    }
+    document.body.classList.toggle("focus", focus);
+    keepAwake(st === "running" || st === "ready" || st === "holding" || T.inspecting);
+    renderHint();
+  }
+  function inspectionElapsed() { return performance.now() - T.inspStart; }
+  function inspectionText() {
+    const e = inspectionElapsed();
+    if (e >= 17000) return "DNF";
+    if (e >= 15000) return "+2";
+    return String(Math.ceil(15 - e / 1000));
+  }
+  // Whole-seconds view: 59 → 1:00 → 3:01, matching how the full time reads.
+  function wholeSeconds(ms) {
+    const total = Math.floor(ms / 1000), m = Math.floor(total / 60), sec = total % 60;
+    return m ? `${m}:${String(sec).padStart(2, "0")}` : String(sec);
+  }
+  function loop() {
+    const t = $("#timer");
+    if (T.state === "running") {
+      const ms = performance.now() - T.start;
+      const mode = settings().running;
+      t.textContent = mode === "hidden" ? "solving" : mode === "seconds" ? wholeSeconds(ms) : S.fmt(ms, settings().decimals);
+    } else if (T.inspecting) {
+      const e = inspectionElapsed();
+      if (e >= 8000 && !T.alerted[8]) { T.alerted[8] = true; alertAt(8); }
+      if (e >= 12000 && !T.alerted[12]) { T.alerted[12] = true; alertAt(12); }
+      t.textContent = inspectionText();
+    } else return;
+    T.raf = requestAnimationFrame(loop);
+  }
+  function startInspection() {
+    T.inspecting = true; T.inspStart = performance.now(); T.alerted = {};
+    setTimerState("idle");
+    cancelAnimationFrame(T.raf); T.raf = requestAnimationFrame(loop);
+  }
+  function beginHold() {
+    clearTimeout(T.holdTimer);
+    setTimerState("holding");
+    const ready = () => {
+      setTimerState("ready");
+      if (T.inspecting) return; // the countdown keeps running on screen
+      $("#timer").textContent = T.holdFor === "inspection" ? "15" : settings().decimals === 3 ? "0.000" : "0.00";
+    };
+    const ms = +settings().holdMs || 0;
+    if (ms <= 0) ready(); else T.holdTimer = setTimeout(() => { if (T.state === "holding") ready(); }, ms);
+  }
+  function startTimer() {
+    let pen = 0;
+    if (T.inspecting) { const e = inspectionElapsed(); pen = e >= 17000 ? -1 : e >= 15000 ? 2000 : 0; }
+    T.inspecting = false; T.pen = pen;
+    T.start = performance.now();
+    setTimerState("running");
+    cancelAnimationFrame(T.raf); T.raf = requestAnimationFrame(loop);
+  }
+  function stopTimer() {
+    const ms = Math.round(performance.now() - T.start);
+    cancelAnimationFrame(T.raf);
+    setTimerState("idle");
+    addSolve({ t: ms, p: T.pen || 0 });
+  }
+  function cancelAll() {
+    clearTimeout(T.holdTimer); cancelAnimationFrame(T.raf);
+    T.inspecting = false;
+    setTimerState("idle"); renderTimerIdle();
+  }
+  function press() {
+    if (!$("#loading").hidden) return;
+    unlockAudio();
+    if (T.state === "running") { stopTimer(); T.ignoreRelease = true; return; }
+    if (settings().entry === "typing") return;
+    if (T.state === "holding" || T.state === "ready") return;
+    // With inspection on, the first hold starts inspection and the second starts the solve.
+    T.holdFor = settings().inspection && !T.inspecting ? "inspection" : "solve";
+    beginHold();
+  }
+  function release() {
+    if (T.ignoreRelease) { T.ignoreRelease = false; return; }
+    if (T.state === "holding") { clearTimeout(T.holdTimer); setTimerState("idle"); if (!T.inspecting) renderTimerIdle(); return; }
+    if (T.state === "ready") { if (T.holdFor === "inspection") startInspection(); else startTimer(); }
+  }
+  function blockedTarget(t) { return t && t.closest && t.closest("input, textarea, select, [contenteditable='true']"); }
+  document.addEventListener("keydown", e => {
+    if ($("#dlg").open) return;
+    if (e.code === "Space" || e.key === " ") {
+      if (blockedTarget(e.target)) return;
+      e.preventDefault();
+      if (e.repeat) return;
+      press(); return;
+    }
+    if (T.state === "running") {
+      e.preventDefault();
+      if (e.key === "Escape") { cancelAnimationFrame(T.raf); setTimerState("idle"); renderTimerIdle(); toast("Solve discarded"); return; }
+      stopTimer(); return;
+    }
+    if (e.key === "Escape" && (T.inspecting || T.state !== "idle")) { cancelAll(); return; }
+    if (blockedTarget(e.target)) return;
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+      const k = e.code;
+      if (k === "Digit1") { e.preventDefault(); setPenaltyLast(0); }
+      else if (k === "Digit2") { e.preventDefault(); setPenaltyLast(2000); }
+      else if (k === "Digit3") { e.preventDefault(); setPenaltyLast(-1); }
+      else if (k === "Backspace" || k === "Delete") { e.preventDefault(); deleteSolve(curSolves().length - 1); }
+      else if (k === "ArrowRight") { e.preventDefault(); nextScramble(); }
+      else if (k === "ArrowLeft") { e.preventDefault(); prevScramble(); }
+    }
+  });
+  document.addEventListener("keyup", e => {
+    if ($("#dlg").open) return;
+    if (e.code === "Space" || e.key === " ") { if (blockedTarget(e.target)) return; e.preventDefault(); release(); }
+  });
+  const stage = $("#stage");
+  stage.addEventListener("pointerdown", e => {
+    if (e.button !== 0 || e.target.closest("button, input, .lastbar, .typing")) return;
+    e.preventDefault();
+    try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    press();
+  });
+  stage.addEventListener("pointerup", e => { if (e.target.closest("button, input, .lastbar, .typing") && T.state !== "ready" && T.state !== "holding") return; release(); });
+  stage.addEventListener("pointercancel", () => { if (T.state === "holding") { clearTimeout(T.holdTimer); setTimerState("idle"); renderTimerIdle(); } });
+  // While running, a tap anywhere stops the clock.
+  document.addEventListener("pointerdown", e => { if (T.state === "running" && !stage.contains(e.target)) { e.preventDefault(); stopTimer(); T.ignoreRelease = true; } }, true);
+  document.addEventListener("pointerup", e => { if (T.ignoreRelease && !stage.contains(e.target)) T.ignoreRelease = false; }, true);
+
+  // ---------------- solves ----------------
+  function addSolve({ t, p }) {
+    const list = curSolves();
+    const sv = { t, p, s: currentScramble() || "", c: "", d: Date.now() };
+    list.push(sv);
+    changedSolves(data.current, list.length - 1);
+    renderAll();
+    const sm = summaryCache();
+    const r = sm.rows[0];
+    if (list.length > 1 && r.best === S.val(sv) && r.best !== DNF) toast("New best single: " + S.fmt(r.best, settings().decimals));
+    else { const a = sm.rows.find(x => x.key === "ao5"); if (a && a.cur !== null && a.cur !== DNF && a.cur === a.best && list.length > 5) toast("New best ao5: " + S.fmt(a.best, settings().decimals, true)); }
+    nextScramble();
+  }
+  function setPenalty(i, p) {
+    const list = curSolves(); if (!list[i]) return;
+    list[i].p = p; changedSolves(data.current, i); renderAll();
+  }
+  function setPenaltyLast(p) { const n = curSolves().length; if (n) { setPenalty(n - 1, p); renderTimerIdle(); } }
+  function deleteSolve(i) {
+    const list = curSolves(); if (!list[i]) return;
+    const sid = data.current, removed = list.splice(i, 1)[0];
+    changedSolves(sid, i); renderAll(); renderTimerIdle();
+    toast("Solve deleted", "Undo", () => { const l = data.solves[sid]; if (!l) return; l.splice(i, 0, removed); changedSolves(sid, i); renderAll(); renderTimerIdle(); });
+  }
+
+  // ---------------- rendering ----------------
+  let _sum = null, _sumKey = "";
+  function summaryCache() {
+    const list = curSolves();
+    const key = data.current + ":" + list.length + ":" + list.reduce((a, s) => (a * 31 + s.t + s.p) % 1e9, 7);
+    if (key !== _sumKey) { _sum = S.summary(list); _sumKey = key; }
+    return _sum;
+  }
+  function renderStats() {
+    const sm = summaryCache(), dec = settings().decimals;
+    let h = `<table><thead><tr><th scope="col"></th><th scope="col">current</th><th scope="col">best</th></tr></thead><tbody>`;
+    for (const r of sm.rows) {
+      const isAvg = r.key !== "single";
+      const c = r.cur === null ? "–" : S.fmt(r.cur, dec, isAvg), b = r.best === null ? "–" : S.fmt(r.best, dec, isAvg);
+      const pb = r.cur !== null && r.cur !== DNF && r.cur === r.best && sm.count > r.n;
+      h += `<tr><td>${r.label}</td><td><button class="cell${pb ? " pb" : ""}" type="button" data-k="${r.key}" data-end="${r.curEnd}" ${r.cur === null ? "disabled" : ""}>${c}</button></td>` +
+        `<td><button class="cell" type="button" data-k="${r.key}" data-end="${r.bestEnd}" ${r.best === null ? "disabled" : ""}>${b}</button></td></tr>`;
+    }
+    h += `</tbody></table><div class="stats-foot"><span>solves <b class="num">${sm.solved}/${sm.count}</b></span><span>mean <b class="num">${sm.mean === null ? "–" : S.fmt(sm.mean, dec, true)}</b></span><span>σ <b class="num">${sm.sd === null ? "–" : S.fmt(sm.sd, dec, true)}</b></span></div>`;
+    $("#stats").innerHTML = h;
+  }
+  let listLimit = 150;
+  function renderList() {
+    const list = curSolves(), dec = settings().decimals, n = list.length;
+    const box = $("#solveList");
+    if (!n) { box.innerHTML = `<div class="empty">No solves in this session yet. Hold the space bar (or press and hold the timer) until it turns green, then let go to start.</div>`; return; }
+    const a5 = S.rolling(list.slice(Math.max(0, n - listLimit - 4)), 5), a12 = S.rolling(list.slice(Math.max(0, n - listLimit - 11)), 12);
+    const off5 = Math.max(0, n - listLimit - 4), off12 = Math.max(0, n - listLimit - 11);
+    const best = summaryCache().rows[0].best;
+    let h = "";
+    for (let i = n - 1; i >= Math.max(0, n - listLimit); i--) {
+      const sv = list[i], v = S.val(sv);
+      const r5 = a5[i - off5], r12 = a12[i - off12];
+      h += `<button class="log-row" type="button" data-i="${i}"><span class="idx">${i + 1}</span><span class="t${v === DNF ? " dnf" : v === best ? " pb" : ""}${sv.c ? " has-note" : ""}">${S.fmtSolve(sv, dec)}</span>` +
+        `<span class="c">${r5 == null ? "–" : S.fmt(r5, dec, true)}</span><span class="c">${r12 == null ? "–" : S.fmt(r12, dec, true)}</span></button>`;
+    }
+    if (n > listLimit) h += `<button class="btn more" type="button" id="showMore">Show ${Math.min(150, n - listLimit)} more</button>`;
+    box.innerHTML = h;
+  }
+  function renderSessions() {
+    const sel = $("#sessionSelect");
+    sel.innerHTML = data.sessions.map(s => { const ev = P.eventById(s.event).name; return `<option value="${s.id}">${esc(s.name)}${s.name === ev ? "" : " · " + esc(ev)} (${(data.solves[s.id] || []).length})</option>`; }).join("");
+    sel.value = data.current;
+    $("#eventSelect").value = cur().event;
+  }
+  function renderScramble(loadingNow) {
+    const box = $("#scramble"), s = currentScramble();
+    const h = H();
+    if (loadingNow || !s) {
+      box.classList.add("pending");
+      box.textContent = P.eventById(cur().event).rs ? "Generating a random-state scramble…" : "Generating scramble…";
+      $("#preview").innerHTML = ""; $("#scrambleMeta").textContent = "";
+      return;
+    }
+    box.classList.remove("pending");
+    box.textContent = s;
+    $("#scrambleMeta").textContent = h.pos < h.list.length - 1 ? `Earlier scramble (${h.list.length - 1 - h.pos} back)` : h.custom && h.custom === s ? "Your scramble" : "";
+    $("#preview").innerHTML = settings().preview ? P.previewSvg(cur().event, s, Geo) : "";
+  }
+  function renderTimerIdle() {
+    if (T.state !== "idle" || T.inspecting) return;
+    const list = curSolves(), dec = settings().decimals;
+    const t = $("#timer");
+    if (!list.length) t.textContent = dec === 3 ? "0.000" : "0.00";
+    else {
+      const sv = list[list.length - 1];
+      t.innerHTML = sv.p === -1 ? `DNF<span class="pen">(${esc(S.fmt(sv.t, dec))})</span>` : esc(S.fmt(sv.t + (sv.p > 0 ? sv.p : 0), dec)) + (sv.p > 0 ? `<span class="pen">+2</span>` : "");
+    }
+    renderLastBar();
+  }
+  function renderLastBar() {
+    const list = curSolves(), bar = $("#lastBar");
+    if (!list.length) { bar.innerHTML = ""; return; }
+    const p = list[list.length - 1].p;
+    bar.innerHTML = `<button class="btn" type="button" data-pen="0" aria-pressed="${p === 0}" title="Alt+1">OK</button><button class="btn" type="button" data-pen="2000" aria-pressed="${p > 0}" title="Alt+2">+2</button><button class="btn" type="button" data-pen="-1" aria-pressed="${p === -1}" title="Alt+3">DNF</button>` +
+      `<button class="btn" type="button" data-act="note">Comment</button><button class="btn danger" type="button" data-act="del" title="Alt+Backspace">Delete</button>`;
+  }
+  function renderQuick() {
+    const sm = summaryCache(), dec = settings().decimals;
+    const g = k => sm.rows.find(r => r.key === k);
+    $("#quick").innerHTML = ["ao5", "ao12"].map(k => { const r = g(k); return `<span>${k}<b>${r.cur === null ? "–" : S.fmt(r.cur, dec, true)}</b></span>`; }).join("");
+  }
+  function renderHint() {
+    const st = settings();
+    let h = "";
+    if (st.entry === "typing") h = "Type a time like 12.34, 1:02.5 or 1234, then press Enter. Add + for +2, or type DNF.";
+    else if (T.state === "running") h = "";
+    else if (T.inspecting) h = T.state === "ready" ? "Release to start" : "Inspecting · hold space to get ready";
+    else if (T.state === "holding") h = "Keep holding…";
+    else if (T.state === "ready") h = T.holdFor === "inspection" ? "Release to start inspection" : "Release to start";
+    else h = st.inspection ? "Hold space, or press and hold here, to start inspection" : "Hold space, or press and hold here";
+    $("#hint").textContent = h;
+  }
+  function renderAll() {
+    renderSessions(); renderStats(); renderList(); renderQuick(); renderTimerIdle(); renderHint();
+    $("#typingBox").hidden = settings().entry !== "typing";
+  }
+
+  // ---------------- settings ----------------
+  function luminance(hex) {
+    const m = hex.replace("#", "").match(/.{2}/g); if (!m) return 0;
+    const [r, g, b] = m.map(x => { const c = parseInt(x, 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  function applySettings() {
+    const st = settings();
+    if (st.theme && st.theme !== "auto") root.dataset.skin = st.theme; else delete root.dataset.skin;
+    if (st.accent && /^#[0-9a-f]{6}$/i.test(st.accent)) { root.style.setProperty("--accent", st.accent); root.style.setProperty("--on-accent", luminance(st.accent) > 0.4 ? "#111" : "#fff"); }
+    else { root.style.removeProperty("--accent"); root.style.removeProperty("--on-accent"); }
+    root.dataset.timerFont = st.timerFont;
+    root.style.setProperty("--timer-scale", st.timerSize);
+    root.style.setProperty("--scramble-scale", st.scrambleSize);
+    root.style.setProperty("--preview-scale", st.previewSize);
+    root.style.setProperty("--quick-scale", st.quickSize);
+    root.dataset.cue = st.cue;
+    try { localStorage.setItem(LOCAL_KEY + ".look", JSON.stringify({ theme: st.theme, accent: st.accent, timerFont: st.timerFont })); } catch (e) { /* ignore */ }
+  }
+  function setSetting(k, v) {
+    data.settings[k] = v;
+    applySettings(); changedProfile();
+    if (k === "preview") renderScramble();
+    if (k === "decimals" || k === "entry" || k === "inspection") renderAll();
+    if (k === "entry" && v === "typing") setTimeout(() => $("#typeEntry").focus(), 0);
+    if (k === "shareBoard") { if (v) scheduleBoard(0); else removeBoardEntry(); }
+  }
+
+  // ---------------- dialogs ----------------
+  const dlg = $("#dlg");
+  let dlgCleanup = null;
+  function openDialog(title, body, foot, onClose) {
+    if (dlg.open) closeDialog();
+    $("#dlgInner").innerHTML = `<div class="dlg-head"><h2>${title}</h2><button class="btn ghost icon-btn" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="dlg-body">${body}</div>${foot ? `<div class="dlg-foot">${foot}</div>` : ""}`;
+    dlgCleanup = onClose || null;
+    dlg.showModal();
+  }
+  function closeDialog() { if (dlg.open) dlg.close(); }
+  dlg.addEventListener("close", () => { const f = dlgCleanup; dlgCleanup = null; if (f) f(); $("#dlgInner").innerHTML = ""; });
+  dlg.addEventListener("click", e => { if (e.target === dlg || e.target.closest("[data-close]")) closeDialog(); });
+
+  // --- solve detail
+  function openSolve(i) {
+    const list = curSolves(), sv = list[i]; if (!sv) return;
+    const dec = settings().decimals;
+    const draw = () => {
+      const s = list[i];
+      return `<div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div class="big-time">${esc(S.fmtSolve(s, dec))}</div><div class="note">${esc(new Date(s.d).toLocaleString())} · ${esc(P.eventById(cur().event).name)}${s.p ? ` · raw ${esc(S.fmt(s.t, dec))}` : ""}</div></div>` +
+        `<div class="seg" role="group" aria-label="Penalty"><button type="button" data-sp="0" aria-pressed="${s.p === 0}">OK</button><button type="button" data-sp="2000" aria-pressed="${s.p > 0}">+2</button><button type="button" data-sp="-1" aria-pressed="${s.p === -1}">DNF</button></div></div>` +
+        `<div><div class="label" style="margin-bottom:6px">Scramble</div><div class="mono-block">${esc(s.s || "No scramble recorded")}</div></div>` +
+        (s.s ? `<div class="solve-preview">${P.previewSvg(cur().event, s.s, Geo)}</div>` : "") +
+        `<div><label class="label" for="solveNote" style="display:block;margin-bottom:6px">Comment</label><input class="input" id="solveNote" style="width:100%" maxlength="300" value="${esc(s.c || "")}" placeholder="e.g. lucky PLL skip"></div>`;
+    };
+    openDialog(`Solve ${i + 1}`, draw(), `<button class="btn" type="button" id="copySolve">Copy</button><button class="btn danger" type="button" id="delSolve">Delete</button><button class="btn primary" type="button" data-close>Done</button>`);
+    const body = $("#dlgInner");
+    body.addEventListener("click", e => {
+      const b = e.target.closest("[data-sp]");
+      if (b) { setPenalty(i, +b.dataset.sp); body.querySelectorAll("[data-sp]").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.sp === list[i].p || (+x.dataset.sp === 2000 && list[i].p > 0)))); body.querySelector(".big-time").textContent = S.fmtSolve(list[i], dec); renderTimerIdle(); }
+    });
+    $("#solveNote").addEventListener("change", e => { list[i].c = e.target.value.trim(); changedSolves(data.current, i); renderList(); });
+    $("#copySolve").addEventListener("click", () => copyText(`${S.fmtSolve(list[i], dec)}   ${list[i].s}${list[i].c ? "   (" + list[i].c + ")" : ""}`));
+    $("#delSolve").addEventListener("click", () => { closeDialog(); deleteSolve(i); });
+  }
+  // --- average detail
+  function openAverage(key, end) {
+    const list = curSolves(), dec = settings().decimals;
+    if (key === "single") return openSolve(end);
+    const kind = S.KINDS.find(k => k.key === key); if (!kind) return;
+    const start = end - kind.n + 1; if (start < 0) return;
+    const win = list.slice(start, end + 1), vals = win.map(S.val);
+    const avg = S.avgValues(vals, kind.mean);
+    const trimmed = kind.mean ? new Set() : S.trimmedIdx(vals);
+    const rows = win.map((sv, j) => {
+      const t = S.fmtSolve(sv, dec), tt = trimmed.has(j) ? `(${t})` : t;
+      return `<button class="avg-item" type="button" data-i="${start + j}"><span class="trim">${start + j + 1}.</span><span class="${trimmed.has(j) ? "trim" : ""}">${esc(tt)}</span><span class="s">${esc(sv.s)}</span></button>`;
+    }).join("");
+    const text = `${kind.label}: ${S.fmt(avg, dec, true)}\n` + win.map((sv, j) => { const t = S.fmtSolve(sv, dec); return `${j + 1}. ${trimmed.has(j) ? "(" + t + ")" : t}   ${sv.s}`; }).join("\n");
+    openDialog(`${kind.label} · solves ${start + 1}–${end + 1}`, `<div class="big-time">${S.fmt(avg, dec, true)}</div><div class="note">${avgRule(kind)}</div><div class="avg-list">${rows}</div>`,
+      `<button class="btn" type="button" id="copyAvg">Copy as text</button><button class="btn primary" type="button" data-close>Done</button>`);
+    $("#copyAvg").addEventListener("click", () => copyText(text));
+    $("#dlgInner").querySelector(".avg-list").addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (b) openSolve(+b.dataset.i); });
+  }
+  function avgRule(kind) {
+    if (kind.mean) return "Mean of all three solves. Any DNF makes the mean a DNF.";
+    const k = S.trimOf(kind.n);
+    return k === 1
+      ? "The fastest and slowest solves are dropped (shown in brackets) and the rest are averaged. Two or more DNFs make the average a DNF."
+      : `The ${k} fastest and ${k} slowest solves are dropped (shown in brackets) and the rest are averaged. More than ${k} DNFs make the average a DNF.`;
+  }
+  // --- sessions
+  function openSessions() {
+    const evOpts = sel => P.EVENTS.map(e => `<option value="${e.id}" ${e.id === sel ? "selected" : ""}>${esc(e.name)}</option>`).join("");
+    let confirmId = null;
+    const draw = () => data.sessions.map(s => {
+      const n = (data.solves[s.id] || []).length;
+      return `<div class="sess-item${s.id === data.current ? " current" : ""}" data-id="${s.id}">
+        <input class="input" value="${esc(s.name)}" aria-label="Session name" data-f="name" maxlength="60">
+        <select data-f="event" aria-label="Puzzle for this session">${evOpts(s.event)}</select>
+        <span class="count">${n} solve${n === 1 ? "" : "s"}</span>
+        <button class="btn danger icon-btn" type="button" data-del title="Delete session" aria-label="Delete ${esc(s.name)}" ${data.sessions.length < 2 ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+        ${confirmId === s.id ? `<div class="confirm-row"><span>Delete “${esc(s.name)}” and its ${n} solve${n === 1 ? "" : "s"}?</span><button class="btn" type="button" data-cancel>Keep it</button><button class="btn danger solid" type="button" data-really>Delete</button></div>` : ""}
+      </div>`;
+    }).join("");
+    openDialog("Sessions", `<div class="sess-list" id="sessList">${draw()}</div>
+      <div class="callout"><div class="label">New session</div><div class="row" style="flex-wrap:wrap"><input class="input grow" id="newSessName" placeholder="Name, e.g. OH practice" maxlength="60"><select id="newSessEvent" aria-label="Puzzle">${evOpts(cur().event)}</select><button class="btn primary" type="button" id="newSessGo">Create</button></div></div>`,
+      `<button class="btn primary" type="button" data-close>Done</button>`);
+    const box = $("#sessList");
+    const redraw = () => { box.innerHTML = draw(); };
+    box.addEventListener("change", e => {
+      const item = e.target.closest("[data-id]"); if (!item) return;
+      const s = data.sessions.find(x => x.id === item.dataset.id);
+      if (e.target.dataset.f === "name") { s.name = e.target.value.trim() || P.eventById(s.event).name; }
+      if (e.target.dataset.f === "event") { s.event = e.target.value; if (hist[s.id]) hist[s.id].event = null; if (s.id === data.current) nextScramble(); }
+      changedProfile(); renderSessions(); scheduleBoard();
+    });
+    box.addEventListener("click", e => {
+      const item = e.target.closest("[data-id]"); if (!item) return;
+      const id = item.dataset.id;
+      if (e.target.closest("[data-del]")) { confirmId = id; redraw(); }
+      else if (e.target.closest("[data-cancel]")) { confirmId = null; redraw(); }
+      else if (e.target.closest("[data-really]")) {
+        const s = data.sessions.find(x => x.id === id);
+        if (mode === "cloud") dirty.dropped.push({ sid: id, chunks: s.chunks || 0 });
+        data.sessions = data.sessions.filter(x => x.id !== id); delete data.solves[id]; delete dirty.chunks[id];
+        if (data.current === id) { data.current = data.sessions[0].id; nextScramble(); }
+        confirmId = null; changedProfile(); renderAll(); redraw(); scheduleBoard();
+      }
+    });
+    $("#newSessGo").addEventListener("click", () => {
+      const s = newSession($("#newSessEvent").value, $("#newSessName").value.trim());
+      data.sessions.push(s); data.solves[s.id] = []; data.current = s.id;
+      changedProfile(); renderAll(); nextScramble(); closeDialog(); toast(`Started “${s.name}”`);
+    });
+  }
+  // --- scramble editor
+  function openEditScramble() {
+    openDialog("Use your own scramble", `<label class="note" for="ownScr">Paste or type a scramble for ${esc(P.eventById(cur().event).name)}. The preview updates as you type.</label><textarea id="ownScr" rows="4" class="mono-block" style="width:100%">${esc(currentScramble() || "")}</textarea><div class="solve-preview" id="ownPrev"></div>`,
+      `<button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="button" id="useScr">Use scramble</button>`);
+    const ta = $("#ownScr"), pv = $("#ownPrev");
+    const upd = () => { pv.innerHTML = P.previewSvg(cur().event, ta.value, Geo) || `<div class="note">This doesn't read as a valid scramble for this puzzle, so there's no preview. You can still use it.</div>`; };
+    ta.addEventListener("input", upd); upd();
+    $("#useScr").addEventListener("click", () => {
+      const v = ta.value.trim(); if (!v) return;
+      const h = H(); h.list.splice(h.pos + 1, 0, v); h.pos++; h.custom = v;
+      closeDialog(); renderScramble();
+    });
+  }
+  // --- charts
+  function niceTicks(min, max, count) {
+    const span = max - min || 1, step0 = span / count, mag = 10 ** Math.floor(Math.log10(step0));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= step0);
+    const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step, out = [];
+    for (let v = lo; v <= hi + step / 2; v += step) out.push(+v.toFixed(6));
+    return out;
+  }
+  function trendSvg(list, dec) {
+    const W = 680, Hh = 260, L = 54, R = 14, Tp = 12, B = 30;
+    const vals = list.map(S.val), a5 = S.rolling(list, 5), a12 = S.rolling(list, 12);
+    const finite = vals.filter(v => v !== DNF);
+    if (finite.length < 2) return `<div class="note">Chart appears after two finished solves.</div>`;
+    const lo = Math.min(...finite), hi = Math.max(...finite);
+    const ticks = niceTicks(lo / 1000, hi / 1000, 5).map(t => t * 1000);
+    const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const n = list.length, x = i => L + (n === 1 ? 0 : (i / (n - 1)) * (W - L - R)), y = v => Tp + (1 - (v - y0) / (y1 - y0 || 1)) * (Hh - Tp - B);
+    let s = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Times over the session">`;
+    for (const t of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 8}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end">${S.fmt(t, 2, true).replace(/\.00$/, "")}</text>`;
+    const xt = niceTicks(1, n, 6).filter(v => v >= 1 && v <= n && Number.isInteger(v));
+    for (const t of xt) s += `<text x="${x(t - 1).toFixed(1)}" y="${Hh - 10}" text-anchor="middle">${t}</text>`;
+    const dots = vals.map((v, i) => v === DNF ? "" : `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${n > 300 ? 1.4 : 2.4}" fill="var(--muted)" opacity=".55"/>`).join("");
+    const path = arr => { let d = "", on = false; arr.forEach((v, i) => { if (v === null || v === DNF) { on = false; return; } d += (on ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); on = true; }); return d; };
+    s += dots + `<path d="${path(a12)}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" opacity=".75"/><path d="${path(a5)}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+    return s + "</svg>";
+  }
+  function histSvg(list) {
+    const W = 680, Hh = 220, L = 40, R = 14, Tp = 16, B = 30;
+    const vals = list.map(S.val).filter(v => v !== DNF);
+    if (vals.length < 2) return "";
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    const span = (hi - lo) / 1000;
+    const width = [0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60].find(w => span / w <= 18) || 120;
+    const start = Math.floor(lo / 1000 / width) * width;
+    const bins = []; for (let b = start; b <= hi / 1000 + 1e-9; b += width) bins.push({ from: b, n: 0 });
+    for (const v of vals) { const i = Math.min(bins.length - 1, Math.floor((v / 1000 - start) / width + 1e-9)); bins[i].n++; }
+    const maxN = Math.max(...bins.map(b => b.n));
+    const yt = niceTicks(0, maxN, 4).filter(v => Number.isInteger(v));
+    const top = yt[yt.length - 1] || 1;
+    const bw = (W - L - R) / bins.length, y = v => Tp + (1 - v / top) * (Hh - Tp - B);
+    let s = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Distribution of times">`;
+    for (const t of yt) s += `<line x1="${L}" x2="${W - R}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" stroke="var(--line)"/><text x="${L - 8}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end">${t}</text>`;
+    const every = Math.ceil(bins.length / 9);
+    bins.forEach((b, i) => {
+      const h = y(0) - y(b.n);
+      if (b.n) s += `<rect x="${(L + i * bw + 1).toFixed(1)}" y="${y(b.n).toFixed(1)}" width="${Math.max(1, bw - 2).toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="var(--accent)" opacity=".85"><title>${b.from.toFixed(width < 1 ? 2 : 0)}s–${(b.from + width).toFixed(width < 1 ? 2 : 0)}s: ${b.n}</title></rect>`;
+      if (i % every === 0) s += `<text x="${(L + i * bw).toFixed(1)}" y="${Hh - 10}" text-anchor="middle">${+b.from.toFixed(2)}</text>`;
+    });
+    return s + "</svg>";
+  }
+  function openCharts() {
+    const list = curSolves();
+    openDialog(`Charts · ${esc(cur().name)}`, `<div><div class="label" style="margin-bottom:6px">Times over the session</div><div class="legend"><span><i style="background:var(--muted);height:6px;width:6px;border-radius:50%"></i>single</span><span><i style="background:var(--accent)"></i>ao5</span><span><i style="background:var(--ink);opacity:.75"></i>ao12</span></div><div class="chart">${trendSvg(list, settings().decimals)}</div></div>
+      <div><div class="label" style="margin-bottom:6px">Distribution (seconds)</div><div class="chart">${histSvg(list) || `<div class="note">Distribution appears after two finished solves.</div>`}</div></div>`, `<button class="btn primary" type="button" data-close>Done</button>`);
+    dlg.style.width = "min(760px, calc(100vw - 32px))";
+    dlgCleanup = () => { dlg.style.width = ""; };
+  }
+  // --- settings
+  function openSettings(section) {
+    const st = settings();
+    const opt = (v, l, cur) => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${l}</option>`;
+    const sw = (id, on) => `<input type="checkbox" class="switch" id="${id}" ${on ? "checked" : ""}>`;
+    const where = STANDALONE
+      ? `<strong>Saved on this device.</strong> This home-screen version keeps your solves on this phone. To move solves to or from the claude.ai version, export from one and import into the other.`
+      : mode === "cloud"
+      ? `<strong>Saved to your claude.ai account.</strong> Your sessions and settings follow you to any device where you open this page while signed in.`
+      : cloudBroken
+        ? `<strong>Saved in this browser only.</strong> Your access to this page doesn't allow saving to your account. The page owner can invite you by email as an Editor to change that.`
+        : `<strong>Saved in this browser only.</strong> Open this page on claude.ai while signed in to keep your solves in your account.`;
+    const merge = mode === "cloud" && localBackup && localBackup.sessions.some(s => (localBackup.solves[s.id] || []).length) ? `<button class="btn" type="button" id="mergeLocal">Add solves saved in this browser</button>` : "";
+    openDialog("Settings", `
+      <fieldset><legend class="label">Timing</legend>
+        <div class="field"><label for="sInspection">WCA inspection<small>15 seconds. Starting after 15 s adds +2, after 17 s is a DNF.</small></label>${sw("sInspection", st.inspection)}</div>
+        <div class="field"><label for="sAlerts">Inspection alerts<small>At 8 and 12 seconds</small></label><select id="sAlerts">${opt("voice", "Voice", st.alerts)}${opt("beep", "Beeps", st.alerts)}${opt("off", "Off", st.alerts)}</select></div>
+        <div class="field"><label for="sHold">Hold time before start<small id="sHoldVal">${st.holdMs} ms</small></label><input type="range" id="sHold" min="0" max="1000" step="50" value="${st.holdMs}"></div>
+        <div class="field"><label for="sEntry">Time entry</label><select id="sEntry">${opt("timer", "Timer", st.entry)}${opt("typing", "Type times", st.entry)}</select></div>
+        <div class="field"><label for="sRunning">While running show</label><select id="sRunning">${opt("full", "Full time", st.running)}${opt("seconds", "Seconds only", st.running)}${opt("hidden", "Nothing", st.running)}</select></div>
+        <div class="field"><label for="sCue">Show that the clock is running<small>Inspection is always labelled above the countdown</small></label><select id="sCue">${opt("colorbar", "Color + moving bar", st.cue)}${opt("color", "Color", st.cue)}${opt("bar", "Moving bar", st.cue)}${opt("blink", "Blink", st.cue)}${opt("off", "Nothing", st.cue)}</select></div>
+        <div class="field"><label for="sDecimals">Decimals</label><select id="sDecimals">${opt(2, "0.01 s", st.decimals)}${opt(3, "0.001 s", st.decimals)}</select></div>
+        <div class="field"><label for="sFocus">Hide everything but the clock while timing</label>${sw("sFocus", st.focusMode)}</div>
+      </fieldset>
+      <fieldset><legend class="label">Look</legend>
+        <div class="field"><label for="sTheme">Theme</label><select id="sTheme">${opt("auto", STANDALONE ? "Match system" : "Match Claude", st.theme)}${opt("light", "Light", st.theme)}${opt("dark", "Dark", st.theme)}${opt("stackmat", "Stackmat", st.theme)}${opt("midnight", "Midnight", st.theme)}${opt("contrast", "High contrast", st.theme)}</select></div>
+        <div class="field"><span class="flabel">Accent color</span><div class="swatches" id="sAccents"><button type="button" class="btn ghost" data-acc="" aria-pressed="${!st.accent}" style="padding:2px 8px;font-size:12px">Theme</button>${ACCENTS.map(c => `<button type="button" class="swatch" data-acc="${c}" style="background:${c}" aria-label="Accent ${c}" aria-pressed="${st.accent === c}"></button>`).join("")}<input type="color" id="sAccentCustom" value="${st.accent || "#c94a17"}" aria-label="Custom accent color"></div></div>
+        <div class="field"><label for="sFont">Timer font</label><select id="sFont">${opt("martian", "Martian Mono", st.timerFont)}${opt("jetbrains", "JetBrains Mono", st.timerFont)}${opt("lcd", "LCD", st.timerFont)}${opt("sans", "Sans", st.timerFont)}</select></div>
+        <div class="field"><label for="sTimerSize">Timer size</label><input type="range" id="sTimerSize" min="0.5" max="1.6" step="0.05" value="${st.timerSize}"></div>
+        <div class="field"><label for="sQuickSize">ao5 / ao12 size</label><input type="range" id="sQuickSize" min="0.7" max="2.2" step="0.05" value="${st.quickSize}"></div>
+        <div class="field"><label for="sScrSize">Scramble text size</label><input type="range" id="sScrSize" min="0.7" max="1.8" step="0.05" value="${st.scrambleSize}"></div>
+        <div class="field"><label for="sPreview">Scramble preview</label>${sw("sPreview", st.preview)}</div>
+        <div class="field"><label for="sPrevSize">Preview size</label><input type="range" id="sPrevSize" min="0.6" max="1.8" step="0.05" value="${st.previewSize}"></div>
+      </fieldset>
+      <fieldset id="dataSection"><legend class="label">Your data</legend>
+        <div class="callout"><div>${where}</div>${mode === "cloud" && cloud.me ? `<div class="note">Signed in as ${esc(cloud.me.name || "you")}.</div>` : ""}</div>
+        <div class="row" style="flex-wrap:wrap"><button class="btn" type="button" id="exportBtn">Export JSON</button><label class="btn" for="importFile" style="cursor:pointer">Import file…</label><input type="file" id="importFile" accept=".json,.txt,application/json" hidden>${merge}</div>
+        <div class="note">Import takes a cstimer export (Export → to file) or a file exported from this page. Imported sessions are added next to your current ones.</div>
+        <div id="dataOut"></div>
+      </fieldset>
+      <fieldset><legend class="label">Keyboard</legend>
+        <div class="note"><span class="kbd">Space</span> hold and release to start, any key stops · <span class="kbd">Esc</span> cancel · <span class="kbd">Alt+1</span> <span class="kbd">Alt+2</span> <span class="kbd">Alt+3</span> OK / +2 / DNF on the last solve · <span class="kbd">Alt+⌫</span> delete last · <span class="kbd">Alt+←</span> <span class="kbd">Alt+→</span> scrambles</div>
+      </fieldset>`, `<button class="btn primary" type="button" data-close>Done</button>`);
+    const bind = (id, k, conv, ev) => $(id).addEventListener(ev || "change", e => setSetting(k, conv(e.target)));
+    bind("#sInspection", "inspection", t => t.checked); bind("#sAlerts", "alerts", t => t.value);
+    $("#sHold").addEventListener("input", e => { $("#sHoldVal").textContent = e.target.value + " ms"; });
+    bind("#sHold", "holdMs", t => +t.value); bind("#sEntry", "entry", t => t.value); bind("#sRunning", "running", t => t.value);
+    bind("#sDecimals", "decimals", t => +t.value); bind("#sFocus", "focusMode", t => t.checked); bind("#sTheme", "theme", t => t.value);
+    bind("#sFont", "timerFont", t => t.value); bind("#sPreview", "preview", t => t.checked);
+    bind("#sTimerSize", "timerSize", t => +t.value, "input"); bind("#sScrSize", "scrambleSize", t => +t.value, "input"); bind("#sPrevSize", "previewSize", t => +t.value, "input");
+    bind("#sQuickSize", "quickSize", t => +t.value, "input"); bind("#sCue", "cue", t => t.value);
+    const markAcc = () => $("#sAccents").querySelectorAll("[data-acc]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.acc === (settings().accent || ""))));
+    $("#sAccents").addEventListener("click", e => { const b = e.target.closest("[data-acc]"); if (b) { setSetting("accent", b.dataset.acc); markAcc(); } });
+    $("#sAccentCustom").addEventListener("input", e => { setSetting("accent", e.target.value); markAcc(); });
+    $("#exportBtn").addEventListener("click", exportData);
+    $("#importFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) importFile(f); e.target.value = ""; });
+    if ($("#mergeLocal")) $("#mergeLocal").addEventListener("click", () => {
+      const add = localBackup.sessions.filter(s => (localBackup.solves[s.id] || []).length).map(s => ({ name: s.name + " (this browser)", event: s.event, solves: localBackup.solves[s.id] }));
+      addImported(add); localBackup = null; $("#mergeLocal").remove();
+    });
+    if (section === "data") setTimeout(() => $("#dataSection").scrollIntoView({ block: "start" }), 30);
+  }
+  function exportBody() {
+    return JSON.stringify({ app: "speedcube-timer", version: 1, exported: new Date().toISOString(), settings: data.settings,
+      sessions: data.sessions.map(s => ({ name: s.name, event: s.event, created: s.created, solves: data.solves[s.id] || [] })) }, null, 1);
+  }
+  async function exportData() {
+    const body = exportBody(), name = `speedcube-timer-${new Date().toISOString().slice(0, 10)}.json`;
+    let dl = null;
+    try { dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; } catch (e) { dl = null; }
+    if (dl) {
+      try { await dl.save({ filename: name, data: body }); toast("Exported " + name); return; }
+      catch (e) { if (e && e.code === "declined") return; }
+    }
+    if (STANDALONE) {
+      const file = new File([body], name, { type: "application/json" });
+      // Phones: the share sheet can save to Files or send the file on.
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: name }); return; }
+        catch (e) { if (e && e.name === "AbortError") return; }
+      }
+      try {
+        const url = URL.createObjectURL(file), a = Object.assign(document.createElement("a"), { href: url, download: name });
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        toast("Exported " + name);
+        return;
+      } catch (e) { /* fall back to copyable text below */ }
+    }
+    const out = $("#dataOut"); if (!out) return;
+    out.innerHTML = `<div class="note" style="margin-bottom:6px">Saving files isn't available here. Copy this text and save it as a .json file.</div><textarea class="mono-block" rows="6" style="width:100%" id="exportText" readonly>${esc(body)}</textarea><button class="btn" type="button" id="copyExport" style="margin-top:6px">Copy</button>`;
+    $("#copyExport").addEventListener("click", () => copyText(body, $("#exportText")));
+  }
+  function importFile(file) {
+    const r = new FileReader();
+    r.onload = () => {
+      let obj;
+      try { obj = JSON.parse(String(r.result)); } catch (e) { return showImport(null, "That file isn't valid JSON. Export from cstimer with Export → Export to file, then try again."); }
+      let sessions = [];
+      if (S.isCstimer(obj)) sessions = S.importCstimer(obj);
+      else if (obj && obj.app === "speedcube-timer" && Array.isArray(obj.sessions)) sessions = obj.sessions.map(s => ({ name: String(s.name || "Imported"), event: P.eventById(s.event).id, solves: (s.solves || []).filter(x => x && typeof x.t === "number").map(x => ({ t: Math.round(x.t), p: x.p === -1 ? -1 : x.p > 0 ? 2000 : 0, s: String(x.s || ""), c: String(x.c || ""), d: +x.d || Date.now() })) }));
+      else return showImport(null, "This file isn't a cstimer export or a file from this page.");
+      sessions = sessions.filter(s => s.solves.length);
+      if (!sessions.length) return showImport(null, "The file has no solves to import.");
+      showImport(sessions);
+    };
+    r.onerror = () => showImport(null, "The file couldn't be read.");
+    r.readAsText(file);
+  }
+  function showImport(sessions, err) {
+    const out = $("#dataOut"); if (!out) return;
+    if (!sessions) { out.innerHTML = `<div class="callout" style="color:var(--hold)">${esc(err)}</div>`; return; }
+    const total = sessions.reduce((a, s) => a + s.solves.length, 0);
+    out.innerHTML = `<div class="callout"><div><strong>${sessions.length} session${sessions.length === 1 ? "" : "s"}, ${total} solves found</strong></div><div class="note">${sessions.map(s => `${esc(s.name)} · ${esc(P.eventById(s.event).name)} · ${s.solves.length}`).join("<br>")}</div><div class="row"><button class="btn primary" type="button" id="doImport">Add these sessions</button></div></div>`;
+    $("#doImport").addEventListener("click", () => { addImported(sessions); out.innerHTML = `<div class="callout">Added ${total} solves in ${sessions.length} session${sessions.length === 1 ? "" : "s"}.</div>`; });
+  }
+  function addImported(list) {
+    for (const s of list) {
+      const ns = newSession(s.event, s.name);
+      data.sessions.push(ns); data.solves[ns.id] = s.solves.slice();
+      if (mode === "cloud") dirty.chunks[ns.id] = 0;
+    }
+    changedProfile(); renderAll(); scheduleBoard();
+    toast(`Added ${list.length} session${list.length === 1 ? "" : "s"}`);
+  }
+
+  // ---------------- friends board ----------------
+  let boardUnsub = null, boardDocs = [], boardTimer = null, boardLast = "", boardEvent = null, boardMetric = "single", boardError = "";
+  function myBests() {
+    const out = {};
+    for (const s of data.sessions) {
+      const list = data.solves[s.id] || []; if (!list.length) continue;
+      const b = S.bests(list), e = (out[s.event] = out[s.event] || { single: null, ao5: null, ao12: null, count: 0 });
+      for (const k of ["single", "ao5", "ao12"]) if (b[k] !== null && (e[k] === null || b[k] < e[k])) e[k] = b[k];
+      e.count += list.length;
+    }
+    return out;
+  }
+  function scheduleBoard(delay) {
+    if (mode !== "cloud" || !settings().shareBoard) return;
+    clearTimeout(boardTimer); boardTimer = setTimeout(writeBoard, delay === undefined ? 2500 : delay);
+  }
+  async function writeBoard() {
+    if (mode !== "cloud" || !settings().shareBoard) return;
+    const events = myBests(), body = JSON.stringify(events);
+    if (body === boardLast) return;
+    try { await retry(() => cloud.db.doc(`leaderboard/${cloud.uid}`).set({ uid: cloud.uid, events, updated: Date.now() })); boardLast = body; boardError = ""; }
+    catch (e) { boardError = e && e.code === "invalid_argument" ? "Your access to this page doesn't allow posting to the board. The owner can invite you by email as an Editor." : "Couldn't post your bests. Try again later."; renderBoardBody(); }
+  }
+  async function removeBoardEntry() {
+    if (mode !== "cloud") return;
+    clearTimeout(boardTimer); boardLast = "";
+    try { await retry(() => cloud.db.doc(`leaderboard/${cloud.uid}`).delete()); } catch (e) { /* ignore */ }
+  }
+  function subscribeBoard() {
+    if (boardUnsub || mode !== "cloud") return;
+    boardUnsub = cloud.db.collection("leaderboard").onSnapshot(snap => { boardDocs = snap.docs.map(d => clone(d.data())); renderBoardBody(); },
+      e => { boardUnsub = null; boardError = "The board couldn't load."; renderBoardBody(); });
+  }
+  async function renderBoardBody() {
+    const box = $("#boardBody"); if (!box) return;
+    const dec = settings().decimals, ev = boardEvent;
+    const rows = boardDocs.filter(d => d && d.uid && d.events && d.events[ev]).map(d => ({ uid: d.uid, updated: d.updated, ...d.events[ev] }));
+    const m = boardMetric;
+    rows.sort((a, b) => (a[m] ?? Infinity) - (b[m] ?? Infinity));
+    let profiles = {};
+    if (rows.length && cloud.user) { try { profiles = await cloud.user.profiles(rows.map(r => r.uid)); } catch (e) { profiles = {}; } }
+    if (!$("#boardBody")) return;
+    if (!rows.length) { box.innerHTML = `<div class="empty">Nobody has shared ${esc(P.eventById(ev).name)} times yet.${settings().shareBoard ? "" : " Turn on sharing above to be the first."}</div>`; return; }
+    const th = (k, l) => `<th scope="col" class="${m === k ? "sorted" : ""}">${l}</th>`;
+    box.innerHTML = `<div class="table-wrap"><table class="board"><thead><tr><th scope="col"></th><th scope="col">Cuber</th>${th("single", "single")}${th("ao5", "ao5")}${th("ao12", "ao12")}<th scope="col">solves</th></tr></thead><tbody>${rows.map((r, i) => {
+      const p = profiles[r.uid] || {}, me = r.uid === cloud.uid;
+      return `<tr class="${me ? "me" : ""}"><td class="rank">${r[m] == null ? "–" : i + 1}</td><td><div class="who">${p.avatarUrl ? `<img alt="" src="${esc(p.avatarUrl)}">` : ""}<span>${esc(me ? (p.name ? p.name + " (you)" : "You") : p.name || "Someone")}</span></div></td>` +
+        `<td class="${m === "single" ? "sorted" : ""}">${S.fmt(r.single, dec)}</td><td class="${m === "ao5" ? "sorted" : ""}">${S.fmt(r.ao5, dec, true)}</td><td class="${m === "ao12" ? "sorted" : ""}">${S.fmt(r.ao12, dec, true)}</td><td>${r.count || 0}</td></tr>`;
+    }).join("")}</tbody></table></div>${boardError ? `<div class="note" style="color:var(--hold)">${esc(boardError)}</div>` : ""}`;
+  }
+  function openBoard() {
+    boardEvent = boardEvent || cur().event;
+    if (mode !== "cloud") {
+      openDialog("Friends", `<div class="callout"><strong>The friends board needs a claude.ai account.</strong><div class="note">${cloudBroken ? "Your access to this page can read but not save. Ask the person who shared it to invite you by email as an Editor, then reload." : "Open this page on claude.ai while signed in. Everyone who joins sees each other's best single, ao5 and ao12 for each puzzle."}</div></div>`, `<button class="btn primary" type="button" data-close>Done</button>`);
+      return;
+    }
+    const evOpts = P.EVENTS.map(e => `<option value="${e.id}" ${e.id === boardEvent ? "selected" : ""}>${esc(e.name)}</option>`).join("");
+    openDialog("Friends", `<div class="field"><label for="shareToggle">Share my bests on this board<small>Posts your best single, ao5 and ao12 per puzzle, plus solve counts. Your solves and scrambles stay private.</small></label><input type="checkbox" class="switch" id="shareToggle" ${settings().shareBoard ? "checked" : ""}></div>
+      <div class="row" style="flex-wrap:wrap"><select id="boardEvent" aria-label="Puzzle">${evOpts}</select><div class="seg" role="group" aria-label="Rank by" id="boardMetric">${["single", "ao5", "ao12"].map(k => `<button type="button" data-m="${k}" aria-pressed="${k === boardMetric}">${k}</button>`).join("")}</div></div>
+      <div id="boardBody"><div class="empty">Loading the board…</div></div>
+      <div class="note">Friends join by opening this page while signed in to claude.ai. Each person needs permission to save: share the page with them by email as an Editor (or, in a Team workspace, as a Contributor).</div>`,
+      `<button class="btn primary" type="button" data-close>Done</button>`);
+    $("#shareToggle").addEventListener("change", e => { setSetting("shareBoard", e.target.checked); renderBoardBody(); });
+    $("#boardEvent").addEventListener("change", e => { boardEvent = e.target.value; renderBoardBody(); });
+    $("#boardMetric").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; boardMetric = b.dataset.m; $("#boardMetric").querySelectorAll("[data-m]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); renderBoardBody(); });
+    subscribeBoard(); renderBoardBody();
+  }
+
+  // ---------------- misc UI ----------------
+  let toastTimer = null;
+  function toast(msg, actionLabel, action) {
+    const t = $("#toast"), b = $("#toastAction");
+    $("#toastMsg").textContent = msg;
+    b.hidden = !actionLabel; b.textContent = actionLabel || "";
+    b.onclick = () => { t.classList.remove("show"); if (action) action(); };
+    t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), actionLabel ? 6000 : 2600);
+  }
+  async function copyText(text, fallbackEl) {
+    try { await navigator.clipboard.writeText(text); toast("Copied"); }
+    catch (e) {
+      const ta = fallbackEl || Object.assign(document.createElement("textarea"), { value: text });
+      if (!fallbackEl) { ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); }
+      ta.select();
+      let ok = false; try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+      if (!fallbackEl) ta.remove();
+      toast(ok ? "Copied" : "Select the text and copy it");
+    }
+  }
+
+  // ---------------- wiring ----------------
+  $("#eventSelect").innerHTML = P.EVENTS.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join("");
+  $("#eventSelect").addEventListener("change", e => {
+    const ev = e.target.value, s = cur(), empty = !curSolves().length;
+    // 1) go to the most recent session for that puzzle, 2) else reuse an empty current session, 3) else start one
+    const other = data.sessions.slice().reverse().find(x => x.event === ev && x.id !== s.id);
+    if (other) {
+      data.current = other.id;
+      // drop an untouched session that only existed because of puzzle switching
+      if (empty && s.name === P.eventById(s.event).name && data.sessions.length > 1) { data.sessions = data.sessions.filter(x => x.id !== s.id); delete data.solves[s.id]; delete hist[s.id]; }
+      toast(`Switched to “${other.name}”`);
+    } else if (empty) {
+      if (s.name === P.eventById(s.event).name) s.name = P.eventById(ev).name; // keep a custom name
+      s.event = ev;
+    } else {
+      const ns = newSession(ev); data.sessions.push(ns); data.solves[ns.id] = []; data.current = ns.id;
+      toast(`Started “${ns.name}”`);
+    }
+    changedProfile();
+    $("#eventSelect").blur();
+    listLimit = 150;
+    renderAll();
+    const h = H(); if (h.pos >= 0 && h.event === cur().event) renderScramble(); else nextScramble();
+    scheduleBoard();
+  });
+  $("#sessionSelect").addEventListener("change", e => { data.current = e.target.value; listLimit = 150; changedProfile(); renderAll(); $("#sessionSelect").blur(); const h = H(); if (h.pos >= 0 && h.event === cur().event) renderScramble(); else nextScramble(); });
+  $("#manageSessions").addEventListener("click", openSessions);
+  $("#prevScr").addEventListener("click", prevScramble);
+  $("#nextScr").addEventListener("click", () => nextScramble());
+  $("#editScr").addEventListener("click", openEditScramble);
+  $("#copyScr").addEventListener("click", () => { const s = currentScramble(); if (s) copyText(s); });
+  $("#openSettings").addEventListener("click", () => openSettings());
+  $("#accountChip").addEventListener("click", () => openSettings("data"));
+  $("#openCharts").addEventListener("click", openCharts);
+  $("#openBoard").addEventListener("click", openBoard);
+  if (STANDALONE) $("#openBoard").hidden = true;
+  // Full screen: only offered where the browser allows it (most phones inside Claude do not).
+  const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+  const fsEnabled = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  const installed = window.matchMedia && (matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true);
+  function renderFs() {
+    const on = !!fsEl();
+    $("#fsLabel").textContent = on ? "Exit full screen" : "Full screen";
+    $("#fullscreenBtn").title = on ? "Exit full screen" : "Full screen";
+    $("#fullscreenBtn").setAttribute("aria-label", on ? "Exit full screen" : "Full screen");
+    $("#fsIcon").innerHTML = on ? '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>' : '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>';
+  }
+  if (fsEnabled && !installed) {
+    $("#fullscreenBtn").hidden = false;
+    $("#fullscreenBtn").addEventListener("click", async () => {
+      $("#fullscreenBtn").blur();
+      try {
+        if (fsEl()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        else {
+          const el = document.documentElement;
+          await (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: "hide" });
+        }
+      } catch (e) { toast("Full screen isn't available here. Try the home-screen version."); }
+    });
+    document.addEventListener("fullscreenchange", renderFs);
+    document.addEventListener("webkitfullscreenchange", renderFs);
+  }
+  $("#stats").addEventListener("click", e => { const b = e.target.closest(".cell"); if (b && !b.disabled) openAverage(b.dataset.k, +b.dataset.end); });
+  $("#solveList").addEventListener("click", e => {
+    if (e.target.id === "showMore") { listLimit += 150; renderList(); return; }
+    const b = e.target.closest("[data-i]"); if (b) openSolve(+b.dataset.i);
+  });
+  $("#lastBar").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    b.blur();
+    if (b.dataset.pen !== undefined) setPenaltyLast(+b.dataset.pen);
+    else if (b.dataset.act === "del") deleteSolve(curSolves().length - 1);
+    else if (b.dataset.act === "note") { openSolve(curSolves().length - 1); setTimeout(() => { const n = $("#solveNote"); if (n) n.focus(); }, 30); }
+  });
+  $("#preview").addEventListener("click", () => {
+    const s = currentScramble(); if (!s) return;
+    openDialog(esc(P.eventById(cur().event).name) + " scramble", `<div class="mono-block">${esc(s)}</div><div>${P.previewSvg(cur().event, s, Geo)}</div>`, `<button class="btn primary" type="button" data-close>Done</button>`);
+  });
+  function submitTyped() {
+    const v = S.parseTyped($("#typeEntry").value);
+    if (!v) { toast("Couldn't read that time. Try 12.34, 1:05.20 or DNF."); return; }
+    $("#typeEntry").value = "";
+    addSolve(v);
+  }
+  $("#typeEntry").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); submitTyped(); } });
+  $("#typeSubmit").addEventListener("click", submitTyped);
+  document.addEventListener("visibilitychange", () => { if (document.hidden && mode === "cloud" && (dirty.profile || Object.keys(dirty.chunks).length)) { clearTimeout(flushTimer); flush(); } });
+
+  // ---------------- boot ----------------
+  async function boot() {
+    try { const look = JSON.parse(localStorage.getItem(LOCAL_KEY + ".look") || "null"); if (look) { data = normalize({ settings: look }); applySettings(); } } catch (e) { /* ignore */ }
+    const local = Local.load();
+    data = normalize(local);
+    applySettings(); renderAll(); nextScramble();
+    setSync("local");
+    const hasClaude = window.claude && typeof window.claude.use === "function";
+    if (!hasClaude) return;
+    const loading = $("#loading");
+    const skipTimer = setTimeout(() => { $("#skipLoading").hidden = false; }, 4000);
+    let skipped = false;
+    $("#skipLoading").onclick = () => { skipped = true; loading.hidden = true; };
+    loading.hidden = false;
+    try {
+      const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      if (skipped) return;
+      if (!db || !user) return;
+      const me = await user.me();
+      if (!me || !me.id) return;
+      cloud = { db, user, uid: me.id, me };
+      const remote = await loadCloud();
+      if (skipped) { cloud = null; return; }
+      mode = "cloud";
+      if (remote) {
+        localBackup = local ? normalize(local) : null;
+        data = normalize(remote);
+        // keep any solves made on this device during loading
+      } else {
+        // First visit with an account: move this browser's data into the account.
+        markAllDirty();
+      }
+      $("#accountName").textContent = me.name || "Signed in";
+      if (me.avatarUrl) { const img = document.createElement("img"); img.alt = ""; img.src = me.avatarUrl; $("#accountChip").prepend(img); }
+      if (!dirty.profile && !Object.keys(dirty.chunks).length) setSync("saved"); else setSync("saving");
+      applySettings(); renderAll();
+      if (H().event !== cur().event || H().pos < 0) nextScramble(); else renderScramble();
+      if (settings().shareBoard) scheduleBoard(1000);
+    } catch (e) {
+      cloud = null; mode = "local";
+      setSync("local", "Couldn't reach your account, so this browser is being used.");
+    } finally {
+      clearTimeout(skipTimer); loading.hidden = true;
+    }
+  }
+  boot();
+
+  // test hook (harmless in production)
+  window.__ct = { get data() { return data; }, get mode() { return mode; }, T, S, flush, myBests, changed: changedSolves, render: () => renderAll(), wholeSeconds, get wakeLock() { return wakeLock; }, STANDALONE };
+})();
+
+</script>
+<script>
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+</body></html>
